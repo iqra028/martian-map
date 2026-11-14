@@ -6,192 +6,191 @@
 <title>Marswalk planner</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-  :root { --bg:#1c1a1a; --panel:#262222; --line:#4a403c; --text:#f1e9e4; --muted:#b5a79f; --go:#7ed08a; --stop:#ff7a5c; --accent:#e8a35c; }
+  :root { --bg:#0b1220; --panel:#0f1a2e; --panel2:#13213a; --line:#233352; --text:#eaf0fb; --muted:#9fb0cc; --go:#7ed08a; --stop:#ff7a5c; --accent:#e8a35c; --blue:#2f9bff; --teal:#4ecdc4; }
   * { box-sizing:border-box; }
-  html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui, -apple-system, sans-serif; }
-  #app { display:flex; height:100%; }
-  #map { flex:1; background:#000; }
-  
-  /* Larger, clear, responsive sidebar */
-  #side { 
-    width: 440px; 
-    min-width: 380px; 
-    max-width: 32vw; 
-    padding: 26px; 
-    background: var(--panel); 
-    border-left: 2px solid var(--line); 
-    overflow-y: auto; 
-    box-shadow: -4px 0 24px rgba(0,0,0,0.4);
-  }
-  
-  h1 { font-size: 24px; margin: 0 0 8px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
-  h2 { font-size: 17px; margin: 26px 0 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
-  p { margin: 0 0 12px; line-height: 1.6; color: var(--muted); font-size: 15px; }
-  
-  .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 16px; font-weight: 500; }
-  .row span:first-child { color: var(--muted); }
-  .row span:last-child { font-weight: 700; color: #fff; }
-  
-  #status { 
-    margin-top: 18px; 
-    padding: 16px; 
-    font-size: 19px; 
-    font-weight: 700; 
-    border: 2px solid var(--go); 
-    color: var(--go); 
-    border-radius: 8px;
-    background: rgba(126, 208, 138, 0.08);
-  }
-  #status.bad { 
-    border-color: var(--stop); 
-    color: var(--stop); 
-    background: rgba(255, 122, 92, 0.08);
-  }
-  #status.caution {
-    border-color: #f2c078;
-    color: #f2c078;
-    background: rgba(242, 192, 120, 0.08);
-  }
-  
-  #stops { padding-left: 22px; margin: 0; font-size: 15px; line-height: 1.7; color: var(--text); }
-  #stops li { margin-bottom: 8px; }
-  #stops li::marker { color: var(--accent); font-weight: bold; }
-  
-  #warn { margin-top: 14px; font-size: 14px; color: var(--stop); font-weight: 500; }
-  .layer-note { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
-  #geology-status { min-height: 20px; margin-top: 6px; font-size: 13px; color: var(--muted); }
-  #geology-status.error { color: var(--stop); }
-  .opacity-control { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
-  .opacity-control label { flex: 1; font-size: 14px; }
-  .opacity-control input { width: 140px; accent-color: var(--accent); }
-  .opacity-control output { width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
-  #terrain-legend { list-style: none; padding: 0; margin: 8px 0 0; font-size: 13px; line-height: 1.7; }
-  #terrain-legend li { display: flex; align-items: center; gap: 8px; }
-  .legend-swatch { width: 12px; height: 12px; flex: 0 0 12px; border-radius: 2px; }
-  .legend-go { background: var(--go); }
-  .legend-caution { background: #f2c078; }
-  .legend-avoid { background: var(--stop); }
-  
-  #coords { 
-    margin-top: 14px; 
-    padding: 12px 14px; 
-    border: 1px dashed var(--line); 
-    border-radius: 6px; 
-    font-size: 14px; 
-    color: #e0f2fe; 
-    background: rgba(0,0,0,0.3);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; 
-  }
-  
-  .popup img { max-width: 240px; display: block; margin-top: 8px; border-radius: 4px; }
-  
-  /* Make Leaflet layer switcher and zoom controls large & readable */
-  .leaflet-control-layers {
-    font-size: 14px !important;
-    padding: 12px 16px !important;
-    background: rgba(38, 34, 34, 0.95) !important;
-    color: #f1e9e4 !important;
-    border: 1px solid var(--line) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
-    backdrop-filter: blur(8px);
-    line-height: 1.8 !important;
-  }
-  .leaflet-control-layers-base label,
-  .leaflet-control-layers-overlays label {
-    margin: 4px 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    cursor: pointer;
-  }
-  .leaflet-control-layers input {
-    margin-right: 10px !important;
-    transform: scale(1.3);
-    cursor: pointer;
-  }
-  .leaflet-control-zoom {
-    transform: scale(1.2);
-    transform-origin: top left;
-    margin: 16px !important;
-  }
+  html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  #app { display:grid; grid-template-rows:auto 1fr auto; height:100%; gap:12px; padding:12px; }
 
-  @media (max-width: 860px) { 
-    #app { flex-direction: column; } 
-    #side { width: 100%; max-width: 100%; max-height: 50%; border-left: 0; border-top: 2px solid var(--line); } 
+  /* Header */
+  header { display:flex; align-items:center; gap:14px; padding:8px 12px; }
+  .logo { width:46px; height:46px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#ff9a6b,#b23a20 70%); display:grid; place-items:center; font-weight:800; font-size:20px; box-shadow:0 0 0 3px #1b2c4d; }
+  header h2.app { margin:0; font-size:24px; font-weight:700; letter-spacing:-.3px; }
+  #title { margin:2px 0 0; font-size:14px; font-weight:500; color:var(--muted); }
+  .spacer { flex:1; }
+  .pill { padding:9px 16px; border:1px solid var(--line); border-radius:10px; background:var(--panel); font-size:14px; font-weight:600; }
+  .pill.ok::before { content:""; display:inline-block; width:9px; height:9px; margin-right:8px; border-radius:50%; background:var(--go); box-shadow:0 0 8px var(--go); }
+
+  /* Main 3-column area */
+  #main { display:flex; gap:12px; min-height:0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow-y:auto; }
+  #left { width:290px; flex:0 0 290px; padding:6px 16px 16px; }
+  #right { width:340px; flex:0 0 340px; padding:6px 18px 18px; }
+  #map { flex:1; min-width:0; border-radius:14px; border:1px solid var(--line); background:#000; }
+
+  h3 { display:flex; align-items:center; gap:8px; margin:18px 0 10px; font-size:15px; font-weight:700; color:#fff; padding-bottom:8px; border-bottom:1px solid var(--line); }
+  h3 .ic { color:var(--accent); }
+  p { margin:0 0 10px; line-height:1.55; color:var(--muted); font-size:14px; }
+
+  /* Layer toggles */
+  .tog { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  .tog small { display:block; color:var(--muted); font-size:12px; }
+  .tog input { display:none; }
+  .sw { width:44px; height:24px; flex:0 0 44px; border-radius:12px; background:#3a465e; position:relative; cursor:pointer; transition:.2s; }
+  .sw::after { content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:.2s; }
+  .tog input:checked + .sw { background:var(--blue); }
+  .tog input:checked + .sw::after { left:23px; }
+  .opacity-control { display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .opacity-control label { flex:1; font-size:14px; font-weight:600; }
+  .opacity-control input { width:100%; accent-color:var(--blue); order:3; }
+  .opacity-control output { font-variant-numeric:tabular-nums; color:var(--muted); }
+  .layer-note { margin:8px 0 0; font-size:12.5px; line-height:1.5; color:var(--muted); }
+  #geology-status { min-height:18px; margin-top:6px; font-size:12.5px; color:var(--muted); }
+  #geology-status.error { color:var(--stop); }
+  #terrain-legend { list-style:none; padding:0; margin:8px 0 0; font-size:13px; line-height:1.8; }
+  #terrain-legend li { display:flex; align-items:center; gap:8px; }
+  .legend-swatch { width:12px; height:12px; flex:0 0 12px; border-radius:3px; }
+  .legend-go { background:var(--go); } .legend-caution { background:#f2c078; } .legend-avoid { background:var(--stop); }
+
+  /* Right panel */
+  .avatar { display:flex; align-items:center; gap:14px; padding:14px 0 6px; }
+  .avatar .face { width:64px; height:64px; border-radius:12px; background:linear-gradient(135deg,#2a3b5e,#0b1220); display:grid; place-items:center; font-size:34px; }
+  .avatar b { font-size:19px; display:block; }
+  .avatar span { color:var(--go); font-size:14px; font-weight:600; }
+  .row { display:flex; justify-content:space-between; padding:8px 0; font-size:14.5px; }
+  .row span:first-child { color:var(--muted); } .row span:last-child { font-weight:700; }
+  #status { padding:12px; font-size:15px; font-weight:700; border:1.5px solid var(--go); color:var(--go); border-radius:10px; background:rgba(126,208,138,.08); margin-top:6px; }
+  #status.bad { border-color:var(--stop); color:var(--stop); background:rgba(255,122,92,.08); }
+  #status.caution { border-color:#f2c078; color:#f2c078; background:rgba(242,192,120,.08); }
+  #warn { margin-top:10px; font-size:13px; color:var(--stop); }
+  #stops { padding-left:20px; margin:0; font-size:14px; line-height:1.6; }
+  #stops li { margin-bottom:8px; } #stops li::marker { color:var(--accent); font-weight:700; }
+  #coords { padding:10px 12px; border:1px dashed var(--line); border-radius:8px; font-size:13.5px; color:#bfe3ff; background:rgba(0,0,0,.3); font-family:ui-monospace,Menlo,monospace; }
+  #elevation-info { margin-top:8px; font-size:12.5px; color:var(--muted); line-height:1.5; padding:10px; background:rgba(0,0,0,.25); border-radius:6px; border-left:3px solid var(--accent); }
+  details { margin-top:16px; } summary { cursor:pointer; font-weight:700; font-size:15px; padding:8px 0; border-bottom:1px solid var(--line); }
+  details p { margin-top:10px; font-size:12.5px; line-height:1.6; }
+
+  /* Bottom nav controls */
+  footer { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--panel); border:1px solid var(--line); border-radius:14px; flex-wrap:wrap; }
+  footer .lbl { font-weight:700; margin-right:6px; }
+  footer .sep { width:1px; height:30px; background:var(--line); margin:0 6px; }
+  .btn { padding:10px 16px; border:1px solid var(--line); border-radius:10px; background:var(--panel2); color:var(--text); font-size:14px; font-weight:600; cursor:pointer; }
+  .btn:hover { border-color:var(--blue); }
+  .btn.primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .btn.active { border-color:var(--blue); background:#14305a; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+
+  /* Leaflet: built-in layer control is replaced by the Map Layers panel */
+  .leaflet-control-layers { display:none !important; }
+  .popup img { max-width:240px; display:block; margin-top:8px; border-radius:4px; }
+
+  @media (max-width:1100px) {
+    html, body { height:auto; } #app { height:auto; }
+    #main { flex-direction:column; }
+    #left, #right { width:100%; flex:none; max-height:none; }
+    #map { height:60vh; flex:none; order:-1; }
   }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="map"></div>
-  <aside id="side">
-    <h1 id="title"></h1>
-    <p id="goal"></p>
-    <h2>Map layers</h2>
-    <p>Use the layer control on the map to switch basemaps and toggle overlays.</p>
-    <div class="opacity-control">
-      <label for="mola-opacity">MOLA overlay opacity</label>
-      <input id="mola-opacity" type="range" min="0" max="100" value="60">
-      <output id="mola-opacity-value" for="mola-opacity">60%</output>
+  <header>
+    <div class="logo">M</div>
+    <div>
+      <h2 class="app">Mars Exploration Navigator</h2>
+      <div id="title"></div>
     </div>
-    <p class="layer-note">USGS provides the geologic units; the safety categories below are app interpretations, not NASA/USGS ratings.</p>
-    <div id="geology-status" role="status" aria-live="polite"></div>
-    <ul id="terrain-legend" aria-label="App-interpreted terrain assessment legend">
-      <li><span class="legend-swatch legend-go"></span><b>GO</b> — Smooth plains (illustrative)</li>
-      <li><span class="legend-swatch legend-caution"></span><b>CAUTION</b> — Knobbly / fractured terrain</li>
-      <li><span class="legend-swatch legend-avoid"></span><b>AVOID</b> — Sand ripple / potential sinkage</li>
-    </ul>
-    <p class="layer-note">Polygons are provisional interpretations from the challenge map/CTX context and require validation; they are not survey-grade boundaries.</p>
-    <div id="status" role="status" aria-live="polite"></div>
-    <div id="warn"></div>
-    <h2>Route</h2>
-    <div class="row"><span>Distance (round trip)</span><span id="dist"></span></div>
-    <div class="row"><span>Walking time</span><span id="time"></span></div>
-    <div class="row"><span>Assumed speed</span><span id="speed"></span></div>
-    <h2>Science stops</h2>
-    <ol id="stops"></ol>
-    <h2>Terrain & Elevation Query</h2>
-    <p>Click anywhere on the map to query coordinates and sample elevation.</p>
-    <div id="coords">No click yet</div>
-    <div id="elevation-info" style="margin-top: 8px; font-size: 13px; color: var(--muted); line-height: 1.5; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 4px; border-left: 3px solid var(--accent);">
-      Click map to sample elevation and verify DTM footprint coverage.
-    </div>
+    <div class="spacer"></div>
+    <div class="pill">Powered by Leaflet</div>
+    <div class="pill ok">System Online</div>
+  </header>
 
-    <h2>Resources used</h2>
-    <p style="font-size: 13px; line-height: 1.6; color: var(--muted);">
-      &bull; <b>HiRISE DTM (1.01 m):</b> DTEEC_006855_1750_007501_1750_A01 (Univ. of Arizona / NASA JPL), Sakarya Vallis chasm in interior mound<br>
-      &bull; <b>JPL Mars Trek:</b> MOLA elevation (463 m), Viking color mosaic (232 m), THEMIS day IR (100 m)<br>
-      &bull; <b>USGS Astrogeology:</b> MRO CTX mosaic (5 m) and the USGS-NASA geologic map of Mars (global, 1:20,000,000, regional context only)<br>
-      &bull; <b>NASA Curiosity route map:</b> used to compare our targets with regions NASA scientists labelled on lower Mount Sharp<br>
-      &bull; <b>Perseverance raw images:</b> example ground-level views (Jezero Crater, not Gale), captioned per stop<br>
-      &bull; <b>NASA Worldview:</b> interface inspiration only (layer toggles, time controls). It holds Earth data.
-    </p>
-  </aside>
+  <div id="main">
+    <aside id="left" class="card">
+      <h3><span class="ic">◈</span> Map Layers</h3>
+      <div id="layer-toggles"></div>
+      <div class="opacity-control">
+        <label for="mola-opacity">MOLA overlay opacity</label>
+        <output id="mola-opacity-value" for="mola-opacity">60%</output>
+        <input id="mola-opacity" type="range" min="0" max="100" value="60">
+      </div>
+      <p class="layer-note">USGS provides the geologic units; the safety categories are app interpretations, not NASA/USGS ratings.</p>
+      <div id="geology-status" role="status" aria-live="polite"></div>
+      <h3><span class="ic">⚠</span> Terrain assessment</h3>
+      <ul id="terrain-legend" aria-label="App-interpreted terrain assessment legend">
+        <li><span class="legend-swatch legend-go"></span><b>GO</b> — Smooth plains (illustrative)</li>
+        <li><span class="legend-swatch legend-caution"></span><b>CAUTION</b> — Knobbly / fractured terrain</li>
+        <li><span class="legend-swatch legend-avoid"></span><b>AVOID</b> — Sand ripple / potential sinkage</li>
+      </ul>
+      <p class="layer-note">Polygons are provisional interpretations from the challenge map/CTX context and require validation; they are not survey-grade boundaries.</p>
+    </aside>
+
+    <div id="map"></div>
+
+    <aside id="right" class="card">
+      <h3><span class="ic">👤</span> Astronaut Panel</h3>
+      <div class="avatar"><div class="face">🧑‍🚀</div><div><b>Explorer-1</b><span>● Status: Ready</span></div></div>
+
+      <h3><span class="ic">⚗</span> Mission Objective</h3>
+      <p id="goal"></p>
+
+      <h3><span class="ic">↗</span> Route Summary</h3>
+      <div class="row"><span>Distance (round trip)</span><span id="dist"></span></div>
+      <div class="row"><span>Walking time</span><span id="time"></span></div>
+      <div class="row"><span>Assumed speed</span><span id="speed"></span></div>
+      <div id="status" role="status" aria-live="polite"></div>
+      <div id="warn"></div>
+
+      <h3><span class="ic">✦</span> Science stops</h3>
+      <ol id="stops"></ol>
+
+      <h3><span class="ic">⌖</span> Terrain &amp; Elevation Query</h3>
+      <p>Click anywhere on the map to query coordinates and sample elevation.</p>
+      <div id="coords">No click yet</div>
+      <div id="elevation-info">Click map to sample elevation and verify DTM footprint coverage.</div>
+
+      <details>
+        <summary>Resources used</summary>
+        <p>
+          &bull; <b>HiRISE DTM (1.01 m):</b> DTEEC_006855_1750_007501_1750_A01 (Univ. of Arizona / NASA JPL), Sakarya Vallis chasm in interior mound<br>
+          &bull; <b>JPL Mars Trek:</b> MOLA elevation (463 m), Viking color mosaic (232 m), THEMIS day IR (100 m)<br>
+          &bull; <b>USGS Astrogeology:</b> MRO CTX mosaic (5 m) and the USGS-NASA geologic map of Mars (global, 1:20,000,000, regional context only)<br>
+          &bull; <b>NASA Curiosity route map:</b> used to compare our targets with regions NASA scientists labelled on lower Mount Sharp<br>
+          &bull; <b>Perseverance raw images:</b> example ground-level views (Jezero Crater, not Gale), captioned per stop<br>
+          &bull; <b>NASA Worldview:</b> interface inspiration only (layer toggles, time controls). It holds Earth data.
+        </p>
+      </details>
+    </aside>
+  </div>
+
+  <footer>
+    <span class="lbl">➤ Navigation Controls</span>
+    <button class="btn" id="btn-start">Go to Start</button>
+    <button class="btn primary" id="btn-fit">Fit Route</button>
+    <button class="btn" id="btn-reset">Reset View</button>
+    <button class="btn" id="btn-dtm">Zoom to HiRISE DTM</button>
+    <span class="sep"></span>
+    <span class="lbl">View:</span>
+    <button class="btn" id="btn-full">⛶ Full Screen</button>
+    <button class="btn active">2D Map</button>
+    <button class="btn" disabled title="Not available yet">3D Terrain</button>
+  </footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 /* ============================================================
-   DATA SECTION — edit everything here.
-   Coordinates are [latitude, longitude].
-   Set to Gale Crater / Mount Sharp (Curiosity boxwork site).
+   DATA + LOGIC — unchanged from the original.
    ============================================================ */
 var SITE = {
   title: "Mount Sharp Boxwork — Marswalk",
   goal: "Walk from base camp to three candidate science targets on visible bedrock near Mount Sharp, avoiding estimated rough and sandy terrain, and return within one EVA.",
-  center: [-5.06, 137.46],        // centered directly on the route stops
-  zoom: 12,                       // zoomed in directly on the Marswalk traverse
-  walkSpeedKmh: 2                // suited EVA pace on Mars
+  center: [-5.06, 137.46],
+  zoom: 12,
+  walkSpeedKmh: 2
 };
 
-/* Route: start, then each stop in order.
-   Walk back to start is added automatically.
-   All stops stay strictly on continuous visible grey CTX ground (south of black swath). */
 var ROUTE = [
-  {
-    name: "Start: base camp",
-    pos:  [-5.0800, 137.4500]
-  },
+  { name: "Start: base camp", pos: [-5.0800, 137.4500] },
   {
     name: "Stop 1 — Candidate science target 1 (boulder field)",
     pos:  [-5.0740, 137.4650],
@@ -218,45 +217,27 @@ var ROUTE = [
   }
 ];
 
-/* App-interpreted terrain zones — polygons of [lat, lng] corners.
-   The GO footprint is illustrative; CAUTION and AVOID are estimated from CTX imagery. */
 var TERRAIN_ZONES = [
   {
     category: "GO",
     name: "Smooth plains near base camp (illustrative app interpretation)",
     color: "#7ed08a",
-    points: [
-      [-5.0820, 137.4450],
-      [-5.0780, 137.4450],
-      [-5.0780, 137.4530],
-      [-5.0820, 137.4530]
-    ]
+    points: [[-5.0820, 137.4450],[-5.0780, 137.4450],[-5.0780, 137.4530],[-5.0820, 137.4530]]
   },
   {
     category: "CAUTION",
     name: "Knobbly / fractured terrain (estimated from CTX imagery)",
     color: "#f2c078",
-    points: [
-      [-5.072, 137.454],
-      [-5.068, 137.461],
-      [-5.064, 137.457],
-      [-5.068, 137.450]
-    ]
+    points: [[-5.072, 137.454],[-5.068, 137.461],[-5.064, 137.457],[-5.068, 137.450]]
   },
   {
     category: "AVOID",
     name: "Sand ripple field — potential sinkage (estimated from CTX imagery)",
     color: "#ff7a5c",
-    points: [
-      [-5.085, 137.465],
-      [-5.080, 137.475],
-      [-5.075, 137.472],
-      [-5.080, 137.462]
-    ]
+    points: [[-5.085, 137.465],[-5.080, 137.475],[-5.075, 137.472],[-5.080, 137.462]]
   }
 ];
 
-/* Mars layers from NASA Trek & USGS/ArcGIS Astrogeology */
 var LAYERS = {
   "Elevation — MOLA colour (463 m)": {
     url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
@@ -280,9 +261,6 @@ var LAYERS = {
   }
 };
 
-/* ============================================================
-   CODE SECTION — no need to edit below this line.
-   ============================================================ */
 var map = L.map("map", {
   crs: L.CRS.EPSG4326,
   center: SITE.center,
@@ -291,7 +269,6 @@ var map = L.map("map", {
   maxZoom: 14
 });
 
-/* Build tile layers; keep visible-image basemaps separate from raster overlays. */
 var tileLayers = {};
 var failed = {};
 Object.keys(LAYERS).forEach(function(label) {
@@ -324,7 +301,6 @@ opacitySlider.addEventListener("input", function() {
   opacityValue.value = opacitySlider.value + "%";
 });
 
-/* App-interpreted GO / CAUTION / AVOID terrain overlay */
 var terrainGroup = L.layerGroup();
 TERRAIN_ZONES.forEach(function(zone) {
   var popup = document.createElement("div");
@@ -340,7 +316,6 @@ TERRAIN_ZONES.forEach(function(zone) {
 });
 terrainGroup.addTo(map);
 
-/* Route polyline + markers */
 var routeGroup = L.layerGroup();
 var path = ROUTE.map(function(p) { return p.pos; });
 var loop = path.concat([path[0]]);
@@ -357,8 +332,6 @@ ROUTE.forEach(function(p, i) {
 });
 routeGroup.addTo(map);
 
-/* USGS-NASA geologic map of Mars (global, 1:20,000,000). EXPERIMENTAL: untested service.
-   If it does not load, use the manual screenshot method and note the unit names in ROUTE. */
 var geoGroup = L.layerGroup();
 var geoLoaded = false;
 function loadGeology() {
@@ -402,27 +375,16 @@ function loadGeology() {
 }
 map.on("overlayadd", function(e){ if (e.layer === geoGroup) loadGeology(); });
 
-/* Verified HiRISE DTM Footprint (DTEEC_006855_1750_007501_1750_A01)
-   Sakarya Vallis Chasm in Gale Crater Interior Mound. 1.01 m/pixel posting. */
 var DTM_BOUNDS = {
-  south: -5.221725,
-  north: -4.950398,
-  west: 137.171577,
-  east: 137.289506,
-  centerLat: -5.09,
-  centerLon: 137.23,
-  minElev: -4043.75,
-  maxElev: -2415.92,
+  south: -5.221725, north: -4.950398, west: 137.171577, east: 137.289506,
+  centerLat: -5.09, centerLon: 137.23,
+  minElev: -4043.75, maxElev: -2415.92,
   productId: "DTEEC_006855_1750_007501_1750_A01"
 };
 
 var dtmGroup = L.layerGroup();
 var dtmRect = L.rectangle([[DTM_BOUNDS.south, DTM_BOUNDS.west], [DTM_BOUNDS.north, DTM_BOUNDS.east]], {
-  color: "#4ecdc4",
-  weight: 2,
-  dashArray: "6 4",
-  fillColor: "#4ecdc4",
-  fillOpacity: 0.12
+  color: "#4ecdc4", weight: 2, dashArray: "6 4", fillColor: "#4ecdc4", fillOpacity: 0.12
 });
 dtmRect.bindPopup(
   "<b>Verified HiRISE DTM Footprint</b><br>" +
@@ -437,7 +399,7 @@ dtmRect.bindPopup(
 dtmRect.addTo(dtmGroup);
 dtmGroup.addTo(map);
 
-/* Layer control */
+/* Original layer control kept (hidden by CSS); the Map Layers panel below drives the same layers. */
 L.control.layers(baseLayers, {
   "Elevation — MOLA colour (463 m)": molaLayer,
   "Thermal — THEMIS Day IR (100 m)": tileLayers["Thermal — THEMIS Day IR (100 m)"],
@@ -447,7 +409,6 @@ L.control.layers(baseLayers, {
   "Geologic units (USGS, regional)": geoGroup
 }, { collapsed: false }).addTo(map);
 
-/* Haversine distance using Mars radius (3389.5 km) */
 function distKm(a, b) {
   var R = 3389.5, r = Math.PI / 180;
   var dLat = (b[0] - a[0]) * r, dLng = (b[1] - a[1]) * r;
@@ -456,7 +417,6 @@ function distKm(a, b) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-/* Rough point-in-polygon test */
 function insidePoly(pt, poly) {
   var inside = false;
   for (var i = 0, j = poly.length-1; i < poly.length; j = i++) {
@@ -495,7 +455,6 @@ function segmentHitsHazard(a, b, poly) {
   return false;
 }
 
-/* Compute totals and assess intersections with app-interpreted terrain zones. */
 var total = 0, zoneHits = { GO: [], CAUTION: [], AVOID: [] };
 for (var i = 0; i < loop.length-1; i++) {
   total += distKm(loop[i], loop[i+1]);
@@ -508,7 +467,6 @@ for (var i = 0; i < loop.length-1; i++) {
   });
 }
 
-/* Fill sidebar */
 document.getElementById("title").textContent = SITE.title;
 document.getElementById("goal").textContent   = SITE.goal;
 document.getElementById("dist").textContent   = total.toFixed(2) + " km";
@@ -543,7 +501,6 @@ function showWarn() {
     ". Check layer name and max zoom, or zoom out.";
 }
 
-/* Click to query coordinates and elevation */
 map.on("click", function(e) {
   var lat = e.latlng.lat;
   var lng = e.latlng.lng;
@@ -555,7 +512,6 @@ map.on("click", function(e) {
                lng >= DTM_BOUNDS.west && lng <= DTM_BOUNDS.east);
 
   if (inDtm) {
-    // Inside high-resolution HiRISE DTM footprint
     elevDiv.innerHTML =
       '<b style="color:#4ecdc4;">[VERIFIED HiRISE DTM COVERAGE]</b><br>' +
       '<b>Dataset:</b> ' + DTM_BOUNDS.productId + ' (1.01 m/pixel posting)<br>' +
@@ -564,7 +520,6 @@ map.on("click", function(e) {
       '<b>Elevation Range:</b> ' + DTM_BOUNDS.minElev.toFixed(1) + ' m to ' + DTM_BOUNDS.maxElev.toFixed(1) + ' m<br>' +
       '<span style="color:#7ed08a;">✓ Full stereo elevation and slope analysis valid here.</span>';
   } else {
-    // Outside high-resolution DTM footprint (Regional MOLA baseline)
     elevDiv.innerHTML =
       '<b style="color:#e8a35c;">[REGIONAL MOLA BASELINE ~463 m/px]</b><br>' +
       '<b>Notice:</b> Coordinate falls outside the high-resolution HiRISE DTM footprint.<br>' +
@@ -572,6 +527,81 @@ map.on("click", function(e) {
       '<span style="color:#ff7a5c;">⚠️ Micro-relief and hazards &lt;460 m are not resolved.</span>';
   }
 });
+
+/* ============================================================
+   UI-ONLY ADDITIONS — wire the new panels to the layers above.
+   Nothing here changes data, routing or terrain calculations.
+   ============================================================ */
+(function() {
+  var viking = tileLayers["Visible — Viking Color Mosaic (232 m)"];
+  var themis = tileLayers["Thermal — THEMIS Day IR (100 m)"];
+  var toggles = [
+    { name: "Base Imagery", sub: "CTX 5 m", layer: ctxLayer, base: true },
+    { name: "Viking Colour", sub: "232 m visible", layer: viking, base: true },
+    { name: "Terrain Elevation", sub: "MOLA 463 m", layer: molaLayer },
+    { name: "Thermal", sub: "THEMIS Day IR", layer: themis },
+    { name: "HiRISE DTM", sub: "1 m footprint", layer: dtmGroup },
+    { name: "Hazard Zones", sub: "GO / CAUTION / AVOID", layer: terrainGroup },
+    { name: "Route", sub: "Round-trip traverse", layer: routeGroup },
+    { name: "Geological Features", sub: "USGS units (regional)", layer: geoGroup }
+  ];
+  var box = document.getElementById("layer-toggles");
+  var inputs = [];
+  toggles.forEach(function(t) {
+    var row = document.createElement("label");
+    row.className = "tog";
+    var txt = document.createElement("span");
+    txt.innerHTML = t.name + "<small>" + t.sub + "</small>";
+    var cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = map.hasLayer(t.layer);
+    var sw = document.createElement("span");
+    sw.className = "sw";
+    row.appendChild(txt); row.appendChild(cb); row.appendChild(sw);
+    box.appendChild(row);
+    inputs.push({ t: t, cb: cb });
+    cb.addEventListener("change", function() {
+      if (cb.checked) {
+        map.addLayer(t.layer);
+        if (t.base) {               // the two visible basemaps are mutually exclusive
+          inputs.forEach(function(o) {
+            if (o.t.base && o.t !== t) { o.cb.checked = false; map.removeLayer(o.t.layer); }
+          });
+        }
+        if (t.layer === molaLayer) molaLayer.setOpacity(Number(opacitySlider.value) / 100);
+      } else {
+        map.removeLayer(t.layer);
+      }
+    });
+  });
+
+  document.getElementById("btn-start").onclick = function() { map.setView(ROUTE[0].pos, 14); };
+  document.getElementById("btn-fit").onclick = function() { map.fitBounds(L.latLngBounds(path), { padding: [40, 40] }); };
+  document.getElementById("btn-reset").onclick = function() { map.setView(SITE.center, SITE.zoom); };
+  document.getElementById("btn-dtm").onclick = function() { map.fitBounds(dtmRect.getBounds()); };
+
+  /* Full screen toggle (whole app). Press Esc to exit. */
+  var fsBtn = document.getElementById("btn-full");
+  var fsRoot = document.documentElement;
+  function isFull() { return document.fullscreenElement || document.webkitFullscreenElement; }
+  fsBtn.onclick = function() {
+    if (isFull()) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+      var req = fsRoot.requestFullscreen || fsRoot.webkitRequestFullscreen;
+      if (req) req.call(fsRoot);
+      else fsBtn.disabled = true;   // browser doesn't support it
+    }
+  };
+  function onFsChange() {
+    var on = !!isFull();
+    fsBtn.textContent = on ? "✕ Exit Full Screen" : "⛶ Full Screen";
+    fsBtn.classList.toggle("active", on);
+    setTimeout(function() { map.invalidateSize(); }, 150);
+  }
+  document.addEventListener("fullscreenchange", onFsChange);
+  document.addEventListener("webkitfullscreenchange", onFsChange);
+})();
 </script>
 </body>
 </html>
