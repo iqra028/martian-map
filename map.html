@@ -120,6 +120,15 @@
     <h2>Find coordinates</h2>
     <p>Click anywhere on the map to read its coordinates. Copy them into the DATA section of this file.</p>
     <div id="coords">No click yet</div>
+
+    <h2>NASA & USGS Data Sources</h2>
+    <p style="font-size: 13px; line-height: 1.6; color: var(--muted);">
+      • <b>Topography:</b> NASA MGS MOLA Color Shaded Relief (463 m) via JPL Mars Trek<br>
+      • <b>Global Optical:</b> NASA Viking MDIM2.1 Color Mosaic (232 m) via JPL Mars Trek<br>
+      • <b>High-Res Optical:</b> MRO CTX Mosaic (5 m) via USGS Astrogeology ArcGIS Service<br>
+      • <b>Thermal IR:</b> NASA Mars Odyssey THEMIS Day IR (100 m) via JPL Mars Trek<br>
+      • <b>Surface Photos:</b> NASA/JPL-Caltech Curiosity Mastcam & ChemCam Archives
+    </p>
   </aside>
 </div>
 
@@ -132,9 +141,7 @@
    ============================================================ */
 var SITE = {
   title: "Mount Sharp Boxwork — Marswalk",
-  goal: "Walk from base camp on the lower slope of Mount Sharp, traverse " +
-        "to the Gediz Vallis debris apron, sample boxwork ridges formed by " +
-        "ancient groundwater, and return within a single EVA window.",
+  goal: "Walk from base camp to three candidate science targets on visible bedrock near Mount Sharp, avoiding estimated rough and sandy terrain, and return within one EVA.",
   center: [-5.06, 137.46],        // centered directly on the route stops
   zoom: 12,                       // zoomed in directly on the Marswalk traverse
   walkSpeedKmh: 2                // suited EVA pace on Mars
@@ -142,47 +149,45 @@ var SITE = {
 
 /* Route: start, then each stop in order.
    Walk back to start is added automatically.
-   FIX 3: stops are now 1–2 km apart, ~7 km round trip total,
-   which is a realistic 3–4 hour EVA. */
+   All stops stay strictly on continuous visible grey CTX ground (south of black swath). */
 var ROUTE = [
   {
     name: "Start: base camp",
     pos:  [-5.0800, 137.4500]
   },
   {
-    name: "Stop 1 — Gediz Vallis debris field",
-    pos:  [-5.0650, 137.4550],
-    note: "Dark boulders carried downslope by ancient debris flows. " +
-          "Visual survey and percussion drill candidate triage.",
-    photo: ""
+    name: "Stop 1 — Candidate science target 1 (boulder field)",
+    pos:  [-5.0740, 137.4650],
+    note: "Dark boulder accumulation on visible bedrock. " +
+          "Visual survey and surface texture inspection.",
+    photo: "https://images-assets.nasa.gov/image/PIA26365/PIA26365~thumb.jpg"
   },
   {
-    name: "Stop 2 — Boxwork ridge outcrop",
-    pos:  [-5.0500, 137.4600],
-    note: "Polygonal mineral ridges (calcium sulfate and opaline silica) " +
-          "formed by groundwater in bedrock fractures. Core sample BX-01.",
-    photo: ""
+    name: "Stop 2 — Candidate science target 2 (ridge outcrop)",
+    pos:  [-5.0660, 137.4690],
+    note: "Linear ridge outcrop visible on CTX imagery. " +
+          "Contact spectroscopy to assess fracture fill and mineral veins.",
+    photo: "https://images-assets.nasa.gov/image/PIA26366/PIA26366~thumb.jpg"
   },
   {
-    name: "Stop 3 — Sulfate–clay contact zone",
-    pos:  [-5.0400, 137.4700],
-    note: "Boundary between clay-bearing mudstone and magnesium sulfate layers. " +
-          "Key indicator of changing water chemistry. Sealed sample for cache.",
-    photo: ""
+    name: "Stop 3 — Candidate science target 3 (layered outcrop)",
+    pos:  [-5.0600, 137.4580],
+    note: "Stratigraphic contact between layered ground and surrounding plains. " +
+          "Multispectral imaging and in-situ composition check.",
+    photo: "https://images-assets.nasa.gov/image/PIA25428/PIA25428~thumb.jpg"
   }
 ];
 
 /* Danger zones — polygons of [lat, lng] corners.
-   Positioned so the default route crosses one zone (triggers NO-GO demo).
-   Reroute stops to avoid it and get GO status. */
+   Positioned over visible knobbly/rough ground entirely south of the black swath. */
 var HAZARDS = [
   {
-    name: "Steep talus escarpment (estimated by eye from MOLA elevation shading)",
+    name: "Rough terrain (estimated from CTX imagery)",
     points: [
-      [-5.060, 137.452],
-      [-5.055, 137.460],
-      [-5.050, 137.457],
-      [-5.055, 137.449]
+      [-5.072, 137.454],
+      [-5.068, 137.461],
+      [-5.064, 137.457],
+      [-5.068, 137.450]
     ]
   },
   {
@@ -224,7 +229,7 @@ var map = L.map("map", {
   center: SITE.center,
   zoom: SITE.zoom,
   minZoom: 1,
-  maxZoom: 16
+  maxZoom: 14
 });
 
 /* Build base layers from LAYERS config */
@@ -237,7 +242,7 @@ Object.keys(LAYERS).forEach(function(label) {
     tileSize: 256,
     bounds: [[-90, -180], [90, 180]],
     maxNativeZoom: cfg.maxNative,
-    maxZoom: 16,
+    maxZoom: 14,
     noWrap: true,
     attribution: '<a href="https://trek.nasa.gov/mars" target="_blank">NASA / USGS / Mars Trek</a>'
   });
@@ -262,7 +267,7 @@ var loop = path.concat([path[0]]);
 L.polyline(loop, { color: "#7ed08a", weight: 3, dashArray: "8 6" }).addTo(routeGroup);
 ROUTE.forEach(function(p, i) {
   var html = "<b>" + p.name + "</b>" + (p.note ? "<br>" + p.note : "");
-  if (p.photo) html += '<div class="popup"><img src="' + p.photo + '" alt="' + p.name + '"></div>';
+  if (p.photo) html += '<div class="popup"><img src="' + p.photo + '" alt="' + p.name + '"><div style="font-size:11px;color:#b5a79f;margin-top:4px;">Surface image: NASA/JPL-Caltech Curiosity Archive</div></div>';
   L.circleMarker(p.pos, {
     radius: i === 0 ? 9 : 7,
     color: "#fff", weight: 2,

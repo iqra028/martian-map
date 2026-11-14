@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marswalk planner</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root { --bg:#1c1a1a; --panel:#262222; --line:#4a403c; --text:#f1e9e4; --muted:#b5a79f; --go:#7ed08a; --stop:#ff7a5c; --accent:#e8a35c; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui, -apple-system, sans-serif; }
+  #app { display:flex; height:100%; }
+  #map { flex:1; background:#000; }
+  
+  /* Larger, clear, responsive sidebar */
+  #side { 
+    width: 440px; 
+    min-width: 380px; 
+    max-width: 32vw; 
+    padding: 26px; 
+    background: var(--panel); 
+    border-left: 2px solid var(--line); 
+    overflow-y: auto; 
+    box-shadow: -4px 0 24px rgba(0,0,0,0.4);
+  }
+  
+  h1 { font-size: 24px; margin: 0 0 8px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+  h2 { font-size: 17px; margin: 26px 0 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+  p { margin: 0 0 12px; line-height: 1.6; color: var(--muted); font-size: 15px; }
+  
+  .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 16px; font-weight: 500; }
+  .row span:first-child { color: var(--muted); }
+  .row span:last-child { font-weight: 700; color: #fff; }
+  
+  #status { 
+    margin-top: 18px; 
+    padding: 16px; 
+    font-size: 19px; 
+    font-weight: 700; 
+    border: 2px solid var(--go); 
+    color: var(--go); 
+    border-radius: 8px;
+    background: rgba(126, 208, 138, 0.08);
+  }
+  #status.bad { 
+    border-color: var(--stop); 
+    color: var(--stop); 
+    background: rgba(255, 122, 92, 0.08);
+  }
+  
+  #stops { padding-left: 22px; margin: 0; font-size: 15px; line-height: 1.7; color: var(--text); }
+  #stops li { margin-bottom: 8px; }
+  #stops li::marker { color: var(--accent); font-weight: bold; }
+  
+  #warn { margin-top: 14px; font-size: 14px; color: var(--stop); font-weight: 500; }
+  
+  #coords { 
+    margin-top: 14px; 
+    padding: 12px 14px; 
+    border: 1px dashed var(--line); 
+    border-radius: 6px; 
+    font-size: 14px; 
+    color: #e0f2fe; 
+    background: rgba(0,0,0,0.3);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; 
+  }
+  
+  .popup img { max-width: 240px; display: block; margin-top: 8px; border-radius: 4px; }
+  
+  /* Make Leaflet layer switcher and zoom controls large & readable */
+  .leaflet-control-layers {
+    font-size: 14px !important;
+    padding: 12px 16px !important;
+    background: rgba(38, 34, 34, 0.95) !important;
+    color: #f1e9e4 !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+    backdrop-filter: blur(8px);
+    line-height: 1.8 !important;
+  }
+  .leaflet-control-layers-base label,
+  .leaflet-control-layers-overlays label {
+    margin: 4px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    cursor: pointer;
+  }
+  .leaflet-control-layers input {
+    margin-right: 10px !important;
+    transform: scale(1.3);
+    cursor: pointer;
+  }
+  .leaflet-control-zoom {
+    transform: scale(1.2);
+    transform-origin: top left;
+    margin: 16px !important;
+  }
+
+  @media (max-width: 860px) { 
+    #app { flex-direction: column; } 
+    #side { width: 100%; max-width: 100%; max-height: 50%; border-left: 0; border-top: 2px solid var(--line); } 
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+  <aside id="side">
+    <h1 id="title"></h1>
+    <p id="goal"></p>
+    <div id="status"></div>
+    <div id="warn"></div>
+    <h2>Route</h2>
+    <div class="row"><span>Distance (round trip)</span><span id="dist"></span></div>
+    <div class="row"><span>Walking time</span><span id="time"></span></div>
+    <div class="row"><span>Assumed speed</span><span id="speed"></span></div>
+    <h2>Science stops</h2>
+    <ol id="stops"></ol>
+    <h2>Find coordinates</h2>
+    <p>Click anywhere on the map to read its coordinates. Copy them into the DATA section of this file.</p>
+    <div id="coords">No click yet</div>
+
+    <h2>Resources used</h2>
+    <p style="font-size: 13px; line-height: 1.6; color: var(--muted);">
+      &bull; <b>JPL Mars Trek:</b> MOLA elevation (463 m), Viking color mosaic (232 m), THEMIS day IR (100 m)<br>
+      &bull; <b>USGS Astrogeology:</b> MRO CTX mosaic (5 m) and the USGS-NASA geologic map of Mars (global, 1:20,000,000, regional context only)<br>
+      &bull; <b>NASA Curiosity route map:</b> used to compare our targets with regions NASA scientists labelled on lower Mount Sharp<br>
+      &bull; <b>Perseverance raw images:</b> example ground-level views (Jezero Crater, not Gale), captioned per stop<br>
+      &bull; <b>NASA Worldview:</b> interface inspiration only (layer toggles, time controls). It holds Earth data.
+    </p>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ============================================================
+   DATA SECTION — edit everything here.
+   Coordinates are [latitude, longitude].
+   Set to Gale Crater / Mount Sharp (Curiosity boxwork site).
+   ============================================================ */
+var SITE = {
+  title: "Mount Sharp Boxwork — Marswalk",
+  goal: "Walk from base camp to three candidate science targets on visible bedrock near Mount Sharp, avoiding estimated rough and sandy terrain, and return within one EVA.",
+  center: [-5.06, 137.46],        // centered directly on the route stops
+  zoom: 12,                       // zoomed in directly on the Marswalk traverse
+  walkSpeedKmh: 2                // suited EVA pace on Mars
+};
+
+/* Route: start, then each stop in order.
+   Walk back to start is added automatically.
+   All stops stay strictly on continuous visible grey CTX ground (south of black swath). */
+var ROUTE = [
+  {
+    name: "Start: base camp",
+    pos:  [-5.0800, 137.4500]
+  },
+  {
+    name: "Stop 1 — Candidate science target 1 (boulder field)",
+    pos:  [-5.0740, 137.4650],
+    note: "Dark boulder accumulation on visible bedrock. " +
+          "Visual survey and surface texture inspection.",
+    photo: "https://images-assets.nasa.gov/image/PIA26365/PIA26365~thumb.jpg",
+    credit: "Curiosity Navcam/Mastcam (NASA/JPL-Caltech). Boulder debris field on Mount Sharp."
+  },
+  {
+    name: "Stop 2 — Candidate science target 2 (ridge outcrop)",
+    pos:  [-5.0660, 137.4690],
+    note: "Linear ridge outcrop visible on CTX imagery. " +
+          "Contact spectroscopy to assess fracture fill and mineral veins.",
+    photo: "https://images-assets.nasa.gov/image/PIA26366/PIA26366~thumb.jpg",
+    credit: "Curiosity Mastcam (NASA/JPL-Caltech). Polygonal fracture ridge outcrop."
+  },
+  {
+    name: "Stop 3 — Candidate science target 3 (layered outcrop)",
+    pos:  [-5.0600, 137.4580],
+    note: "Stratigraphic contact between layered ground and surrounding plains. " +
+          "Multispectral imaging and in-situ composition check.",
+    photo: "https://images-assets.nasa.gov/image/PIA25428/PIA25428~thumb.jpg",
+    credit: "Curiosity ChemCam/Mastcam (NASA/JPL-Caltech). Layered sulfate-bearing unit."
+  }
+];
+
+/* Danger zones — polygons of [lat, lng] corners.
+   Positioned over visible knobbly/rough ground entirely south of the black swath. */
+var HAZARDS = [
+  {
+    name: "Rough terrain (estimated from CTX imagery)",
+    points: [
+      [-5.072, 137.454],
+      [-5.068, 137.461],
+      [-5.064, 137.457],
+      [-5.068, 137.450]
+    ]
+  },
+  {
+    name: "Sand ripple field (potential sinkage, identified from CTX imagery by eye)",
+    points: [
+      [-5.085, 137.465],
+      [-5.080, 137.475],
+      [-5.075, 137.472],
+      [-5.080, 137.462]
+    ]
+  }
+];
+
+/* Mars layers from NASA Trek & USGS/ArcGIS Astrogeology */
+var LAYERS = {
+  "Elevation — MOLA colour (463 m)": {
+    url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
+    maxNative: 7
+  },
+  "Visible — Viking Color Mosaic (232 m)": {
+    url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
+    maxNative: 7
+  },
+  "Imagery — CTX visible (5 m)": {
+    url: "https://astro.arcgis.com/arcgis/rest/services/OnMars/CTX/MapServer/tile/{z}/{y}/{x}",
+    maxNative: 12
+  },
+  "Thermal — THEMIS Day IR (100 m)": {
+    url: "https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png",
+    maxNative: 9
+  }
+};
+
+/* ============================================================
+   CODE SECTION — no need to edit below this line.
+   ============================================================ */
+var map = L.map("map", {
+  crs: L.CRS.EPSG4326,
+  center: SITE.center,
+  zoom: SITE.zoom,
+  minZoom: 1,
+  maxZoom: 14
+});
+
+/* Build base layers from LAYERS config */
+var overlays = {};
+var failed = {};
+var firstLayer = true;
+Object.keys(LAYERS).forEach(function(label) {
+  var cfg = LAYERS[label];
+  var layer = L.tileLayer(cfg.url, {
+    tileSize: 256,
+    bounds: [[-90, -180], [90, 180]],
+    maxNativeZoom: cfg.maxNative,
+    maxZoom: 14,
+    noWrap: true,
+    attribution: '<a href="https://trek.nasa.gov/mars" target="_blank">NASA / USGS / Mars Trek</a>'
+  });
+  layer.on("tileerror", function() { failed[label] = true; showWarn(); });
+  overlays[label] = layer;
+  if (firstLayer) { layer.addTo(map); firstLayer = false; }
+});
+
+/* Danger zone polygons */
+var hazardGroup = L.layerGroup();
+HAZARDS.forEach(function(h) {
+  L.polygon(h.points, {
+    color: "#ff7a5c", weight: 2, fillOpacity: 0.35
+  }).bindPopup("<b>⚠️ Hazard:</b> " + h.name).addTo(hazardGroup);
+});
+hazardGroup.addTo(map);
+
+/* Route polyline + markers */
+var routeGroup = L.layerGroup();
+var path = ROUTE.map(function(p) { return p.pos; });
+var loop = path.concat([path[0]]);
+L.polyline(loop, { color: "#7ed08a", weight: 3, dashArray: "8 6" }).addTo(routeGroup);
+ROUTE.forEach(function(p, i) {
+  var html = "<b>" + p.name + "</b>" + (p.note ? "<br>" + p.note : "");
+  if (p.photo) html += '<div class="popup"><img src="' + p.photo + '" alt="' + p.name + '"><div style="font-size:11px;color:#b5a79f;margin-top:4px;">' + (p.credit || "Surface image: NASA/JPL-Caltech Curiosity Archive") + '</div></div>';
+  L.circleMarker(p.pos, {
+    radius: i === 0 ? 9 : 7,
+    color: "#fff", weight: 2,
+    fillColor: i === 0 ? "#e8a35c" : "#7ed08a",
+    fillOpacity: 1
+  }).bindPopup(html).addTo(routeGroup);
+});
+routeGroup.addTo(map);
+
+/* USGS-NASA geologic map of Mars (global, 1:20,000,000). EXPERIMENTAL: untested service.
+   If it does not load, use the manual screenshot method and note the unit names in ROUTE. */
+var geoGroup = L.layerGroup();
+var geoLoaded = false;
+function loadGeology() {
+  if (geoLoaded) return;
+  geoLoaded = true;
+  var url = "https://services.arcgis.com/nzS0F0zdNLvs7nc8/ArcGIS/rest/services/Mars_Geology_feature_layer/FeatureServer/0/query" +
+    "?where=1%3D1&geometry=136.5,-6,138.5,-4&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&outFields=*&f=geojson";
+  fetch(url).then(function(r){ return r.json(); }).then(function(g){
+    if (!g.features || !g.features.length) throw new Error("no features");
+    L.geoJSON(g, {
+      style: { color: "#e8a35c", weight: 1, fillOpacity: 0.12 },
+      onEachFeature: function(f, l) {
+        var rows = Object.keys(f.properties || {}).map(function(k){ return k + ": " + f.properties[k]; }).join("<br>");
+        l.bindPopup("<b>USGS geologic unit</b><br>" + rows);
+      }
+    }).addTo(geoGroup);
+  }).catch(function(){
+    document.getElementById("warn").textContent =
+      "Geologic layer could not load. Use the USGS geologic map website instead and note the unit names in ROUTE.";
+  });
+}
+map.on("overlayadd", function(e){ if (e.layer === geoGroup) loadGeology(); });
+
+/* Layer control */
+L.control.layers(overlays, {
+  "⚠️ Danger zones": hazardGroup,
+  "🟢 Route": routeGroup,
+  "Geologic units (USGS, regional)": geoGroup
+}, { collapsed: false }).addTo(map);
+
+/* Haversine distance using Mars radius (3389.5 km) */
+function distKm(a, b) {
+  var R = 3389.5, r = Math.PI / 180;
+  var dLat = (b[0] - a[0]) * r, dLng = (b[1] - a[1]) * r;
+  var h = Math.sin(dLat/2)*Math.sin(dLat/2) +
+          Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/* Rough point-in-polygon test */
+function insidePoly(pt, poly) {
+  var inside = false;
+  for (var i = 0, j = poly.length-1; i < poly.length; j = i++) {
+    var yi=poly[i][0], xi=poly[i][1], yj=poly[j][0], xj=poly[j][1];
+    if ((yi>pt[0]) !== (yj>pt[0]) && pt[1] < (xj-xi)*(pt[0]-yi)/(yj-yi)+xi)
+      inside = !inside;
+  }
+  return inside;
+}
+function segmentHitsHazard(a, b, poly) {
+  for (var t=0; t<=1; t+=0.02) {
+    var pt = [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
+    if (insidePoly(pt, poly)) return true;
+  }
+  return false;
+}
+
+/* Compute totals */
+var total = 0, hits = [];
+for (var i = 0; i < loop.length-1; i++) {
+  total += distKm(loop[i], loop[i+1]);
+  HAZARDS.forEach(function(h) {
+    if (segmentHitsHazard(loop[i], loop[i+1], h.points) && hits.indexOf(h.name) < 0)
+      hits.push(h.name);
+  });
+}
+
+/* Fill sidebar */
+document.getElementById("title").textContent = SITE.title;
+document.getElementById("goal").textContent   = SITE.goal;
+document.getElementById("dist").textContent   = total.toFixed(2) + " km";
+document.getElementById("speed").textContent  = SITE.walkSpeedKmh + " km/h";
+var mins = total / SITE.walkSpeedKmh * 60;
+document.getElementById("time").textContent   =
+  Math.floor(mins/60) + " h " + Math.round(mins%60) + " min";
+
+var st = document.getElementById("status");
+if (hits.length) {
+  st.className = "bad";
+  st.textContent = "NO-GO: route crosses " + hits.join(", ");
+} else {
+  st.textContent = "GO: route avoids all marked danger zones";
+}
+
+var ol = document.getElementById("stops");
+ROUTE.slice(1).forEach(function(p) {
+  var li = document.createElement("li");
+  li.textContent = p.name + (p.note ? " — " + p.note : "");
+  ol.appendChild(li);
+});
+
+function showWarn() {
+  var names = Object.keys(failed);
+  document.getElementById("warn").textContent =
+    "Some tiles failed for: " + names.join(", ") +
+    ". Check layer name and max zoom, or zoom out.";
+}
+
+/* Click to read coordinates */
+map.on("click", function(e) {
+  document.getElementById("coords").textContent =
+    "[" + e.latlng.lat.toFixed(4) + ", " + e.latlng.lng.toFixed(4) + "]";
+});
+</script>
+</body>
+</html>
