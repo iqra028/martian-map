@@ -8,22 +8,99 @@
 <style>
   :root { --bg:#1c1a1a; --panel:#262222; --line:#4a403c; --text:#f1e9e4; --muted:#b5a79f; --go:#7ed08a; --stop:#ff7a5c; --accent:#e8a35c; }
   * { box-sizing:border-box; }
-  html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui, sans-serif; }
+  html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui, -apple-system, sans-serif; }
   #app { display:flex; height:100%; }
   #map { flex:1; background:#000; }
-  #side { width:340px; padding:20px; background:var(--panel); border-left:1px solid var(--line); overflow:auto; }
-  h1 { font-size:20px; margin:0 0 4px; font-weight:600; }
-  h2 { font-size:15px; margin:22px 0 8px; font-weight:600; color:var(--accent); }
-  p { margin:0 0 8px; line-height:1.5; color:var(--muted); font-size:14px; }
-  .row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line); font-size:16px; }
-  .row span:first-child { color:var(--muted); }
-  #status { margin-top:14px; padding:14px; font-size:20px; font-weight:600; border:2px solid var(--go); color:var(--go); }
-  #status.bad { border-color:var(--stop); color:var(--stop); }
-  #stops { padding-left:18px; margin:0; font-size:15px; line-height:1.6; }
-  #warn { margin-top:14px; font-size:13px; color:var(--stop); }
-  #coords { margin-top:14px; padding:10px; border:1px dashed var(--line); font-size:13px; color:var(--muted); font-family:ui-monospace, monospace; }
-  .popup img { max-width:220px; display:block; margin-top:6px; }
-  @media (max-width:760px) { #app { flex-direction:column; } #side { width:100%; max-height:45%; border-left:0; border-top:1px solid var(--line); } }
+  
+  /* Larger, clear, responsive sidebar */
+  #side { 
+    width: 440px; 
+    min-width: 380px; 
+    max-width: 32vw; 
+    padding: 26px; 
+    background: var(--panel); 
+    border-left: 2px solid var(--line); 
+    overflow-y: auto; 
+    box-shadow: -4px 0 24px rgba(0,0,0,0.4);
+  }
+  
+  h1 { font-size: 24px; margin: 0 0 8px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+  h2 { font-size: 17px; margin: 26px 0 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+  p { margin: 0 0 12px; line-height: 1.6; color: var(--muted); font-size: 15px; }
+  
+  .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 16px; font-weight: 500; }
+  .row span:first-child { color: var(--muted); }
+  .row span:last-child { font-weight: 700; color: #fff; }
+  
+  #status { 
+    margin-top: 18px; 
+    padding: 16px; 
+    font-size: 19px; 
+    font-weight: 700; 
+    border: 2px solid var(--go); 
+    color: var(--go); 
+    border-radius: 8px;
+    background: rgba(126, 208, 138, 0.08);
+  }
+  #status.bad { 
+    border-color: var(--stop); 
+    color: var(--stop); 
+    background: rgba(255, 122, 92, 0.08);
+  }
+  
+  #stops { padding-left: 22px; margin: 0; font-size: 15px; line-height: 1.7; color: var(--text); }
+  #stops li { margin-bottom: 8px; }
+  #stops li::marker { color: var(--accent); font-weight: bold; }
+  
+  #warn { margin-top: 14px; font-size: 14px; color: var(--stop); font-weight: 500; }
+  
+  #coords { 
+    margin-top: 14px; 
+    padding: 12px 14px; 
+    border: 1px dashed var(--line); 
+    border-radius: 6px; 
+    font-size: 14px; 
+    color: #e0f2fe; 
+    background: rgba(0,0,0,0.3);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; 
+  }
+  
+  .popup img { max-width: 240px; display: block; margin-top: 8px; border-radius: 4px; }
+  
+  /* Make Leaflet layer switcher and zoom controls large & readable */
+  .leaflet-control-layers {
+    font-size: 14px !important;
+    padding: 12px 16px !important;
+    background: rgba(38, 34, 34, 0.95) !important;
+    color: #f1e9e4 !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+    backdrop-filter: blur(8px);
+    line-height: 1.8 !important;
+  }
+  .leaflet-control-layers-base label,
+  .leaflet-control-layers-overlays label {
+    margin: 4px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    cursor: pointer;
+  }
+  .leaflet-control-layers input {
+    margin-right: 10px !important;
+    transform: scale(1.3);
+    cursor: pointer;
+  }
+  .leaflet-control-zoom {
+    transform: scale(1.2);
+    transform-origin: top left;
+    margin: 16px !important;
+  }
+
+  @media (max-width: 860px) { 
+    #app { flex-direction: column; } 
+    #side { width: 100%; max-width: 100%; max-height: 50%; border-left: 0; border-top: 2px solid var(--line); } 
+  }
 </style>
 </head>
 <body>
@@ -51,89 +128,91 @@
 /* ============================================================
    DATA SECTION — edit everything here.
    Coordinates are [latitude, longitude].
-   This example is set to Gale Crater / Mount Sharp (Curiosity's
-   boxwork discovery site — the 2026 Space Apps focus mission).
+   Set to Gale Crater / Mount Sharp (Curiosity boxwork site).
    ============================================================ */
 var SITE = {
   title: "Mount Sharp Boxwork — Marswalk",
-  goal: "Walk from the Curiosity rover base camp south of Mount Sharp, " +
-        "ascend through Gediz Vallis debris apron, sample the boxwork " +
-        "ridge system, and return before the half-O₂ Point of No Return.",
-  center: [-5.0, 137.5],
-  zoom: 10,
-  walkSpeedKmh: 2          // suited EVA pace on Mars
+  goal: "Walk from base camp on the lower slope of Mount Sharp, traverse " +
+        "to the Gediz Vallis debris apron, sample boxwork ridges formed by " +
+        "ancient groundwater, and return within a single EVA window.",
+  center: [-5.06, 137.46],        // centered directly on the route stops
+  zoom: 12,                       // zoomed in directly on the Marswalk traverse
+  walkSpeedKmh: 2                // suited EVA pace on Mars
 };
 
 /* Route: start, then each stop in order.
    Walk back to start is added automatically.
-   Real coordinates from JPL MOLA / MSL traverse data. */
+   FIX 3: stops are now 1–2 km apart, ~7 km round trip total,
+   which is a realistic 3–4 hour EVA. */
 var ROUTE = [
   {
-    name: "Start: Curiosity base camp",
-    pos:  [-5.1480, 137.4600]
+    name: "Start: base camp",
+    pos:  [-5.0800, 137.4500]
   },
   {
-    name: "Stop 1 — Gediz Vallis debris apron",
-    pos:  [-4.9850, 137.4420],
-    note: "Exotic dark boulders transported from high on Mount Sharp. " +
-          "Percussion drill triage + multispectral survey.",
+    name: "Stop 1 — Gediz Vallis debris field",
+    pos:  [-5.0650, 137.4550],
+    note: "Dark boulders carried downslope by ancient debris flows. " +
+          "Visual survey and percussion drill candidate triage.",
     photo: ""
   },
   {
-    name: "Stop 2 — Alpha Boxwork Ridge",
-    pos:  [-4.8600, 137.4700],
-    note: "1–2 m crystalline polygonal ridges: calcium sulfate + opaline silica. " +
-          "ChemCam Raman + core drill sample BX-01.",
+    name: "Stop 2 — Boxwork ridge outcrop",
+    pos:  [-5.0500, 137.4600],
+    note: "Polygonal mineral ridges (calcium sulfate and opaline silica) " +
+          "formed by groundwater in bedrock fractures. Core sample BX-01.",
     photo: ""
   },
   {
-    name: "Stop 3 — Sulfate / clay contact",
-    pos:  [-4.7700, 137.5200],
-    note: "Stratigraphic contact between Murray mudstone and Mg-sulfate beds. " +
-          "Highest habitability potential. Gas chromatography sample cached.",
+    name: "Stop 3 — Sulfate–clay contact zone",
+    pos:  [-5.0400, 137.4700],
+    note: "Boundary between clay-bearing mudstone and magnesium sulfate layers. " +
+          "Key indicator of changing water chemistry. Sealed sample for cache.",
     photo: ""
   }
 ];
 
 /* Danger zones — polygons of [lat, lng] corners.
-   These reflect real steep-slope sectors from MOLA slope data
-   around the Gediz Vallis escarpment. */
+   Positioned so the default route crosses one zone (triggers NO-GO demo).
+   Reroute stops to avoid it and get GO status. */
 var HAZARDS = [
   {
-    name: "Gediz Vallis talus escarpment (>22° slope — no rover access)",
+    name: "Steep talus escarpment (estimated by eye from MOLA elevation shading)",
     points: [
-      [-4.920, 137.430],
-      [-4.900, 137.465],
-      [-4.885, 137.455],
-      [-4.905, 137.420]
+      [-5.060, 137.452],
+      [-5.055, 137.460],
+      [-5.050, 137.457],
+      [-5.055, 137.449]
     ]
   },
   {
-    name: "Active sand ripple field (sinkage risk)",
+    name: "Sand ripple field (potential sinkage, identified from CTX imagery by eye)",
     points: [
-      [-5.100, 137.490],
-      [-5.090, 137.510],
-      [-5.075, 137.505],
-      [-5.085, 137.485]
+      [-5.085, 137.465],
+      [-5.080, 137.475],
+      [-5.075, 137.472],
+      [-5.080, 137.462]
     ]
   }
 ];
 
-/* Mars Trek tile layers from trek.nasa.gov — no API key needed.
-   These are real NASA data served as public map tiles. */
-var TREK = "https://trek.nasa.gov/tiles/Mars/EQ/";
+/* Mars layers from NASA Trek & USGS/ArcGIS Astrogeology */
 var LAYERS = {
   "Elevation — MOLA colour (463 m)": {
-    id: "Mars_MGS_MOLA_ClrShade_merge_global_463m",
+    url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
+    maxNative: 7
+  },
+  "Visible — Viking Color Mosaic (232 m)": {
+    url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
     maxNative: 7
   },
   "Imagery — CTX visible (5 m)": {
-    id: "CTX_beta01_uncontrolled_5m_Caltech",
-    maxNative: 14
+    url: "https://astro.arcgis.com/arcgis/rest/services/OnMars/CTX/MapServer/tile/{z}/{y}/{x}",
+    maxNative: 12
   },
   "Thermal — THEMIS Day IR (100 m)": {
-    id: "Mars_MO_THEMIS_DayIR_mosaic_global_100m_v14_4",
-    maxNative: 10
+    url: "https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png",
+    maxNative: 9
   }
 };
 
@@ -144,7 +223,7 @@ var map = L.map("map", {
   crs: L.CRS.EPSG4326,
   center: SITE.center,
   zoom: SITE.zoom,
-  minZoom: 0,
+  minZoom: 1,
   maxZoom: 16
 });
 
@@ -154,13 +233,13 @@ var failed = {};
 var firstLayer = true;
 Object.keys(LAYERS).forEach(function(label) {
   var cfg = LAYERS[label];
-  var url = TREK + cfg.id + "/1.0.0/default/default028mm/{z}/{y}/{x}.jpg";
-  var layer = L.tileLayer(url, {
+  var layer = L.tileLayer(cfg.url, {
     tileSize: 256,
+    bounds: [[-90, -180], [90, 180]],
     maxNativeZoom: cfg.maxNative,
     maxZoom: 16,
     noWrap: true,
-    attribution: '<a href="https://trek.nasa.gov/mars" target="_blank">NASA/JPL Mars Trek</a>'
+    attribution: '<a href="https://trek.nasa.gov/mars" target="_blank">NASA / USGS / Mars Trek</a>'
   });
   layer.on("tileerror", function() { failed[label] = true; showWarn(); });
   overlays[label] = layer;
