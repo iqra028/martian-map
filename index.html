@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARES-EVA: Martian Surface Navigation & Astronaut Survival Guide</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --mars-red: #c1440e;
+            --mars-dark: #090d16;
+            --mars-panel: #0f172a;
+            --mars-cyan: #06b6d4;
+            --mars-amber: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--mars-dark);
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+
+        .font-mono-tech {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .font-display {
+            font-family: 'Chakra Petch', sans-serif;
+        }
+
+        /* Glassmorphism panels */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .metric-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--mars-cyan);
+        }
+
+        .metric-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        /* Waypoint sequencer items */
+        .wp-seq-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0.75rem;
+            border-radius: 0.375rem;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .wp-seq-item:hover {
+            background: rgba(51, 65, 85, 0.7);
+            border-color: rgba(6, 182, 212, 0.4);
+        }
+
+        .wp-seq-item.active {
+            background: rgba(6, 182, 212, 0.15);
+            border-color: #06b6d4;
+        }
+
+        .wp-badge {
+            width: 24px;
+            height: 24px;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.75rem;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .wp-badge.base { background-color: #10b981; }
+        .wp-badge.science { background-color: #f59e0b; }
+        .wp-badge.transit { background-color: #0284c7; }
+        .wp-badge.shelter { background-color: #8b5cf6; }
+
+        .wp-remove-btn {
+            color: #94a3b8;
+            padding: 2px 6px;
+            font-size: 0.75rem;
+            border-radius: 4px;
+            transition: color 0.15s;
+        }
+        .wp-remove-btn:hover {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Alert Banners */
+        .status-banner {
+            padding: 0.6rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .banner-nominal {
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #6ee7b7;
+        }
+        .banner-warning {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            color: #fcd34d;
+        }
+        .banner-danger {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #fca5a5;
+        }
+
+        /* Visor HUD Simulator Styling */
+        .visor-container {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 60%, rgba(2, 6, 23, 0.85) 100%);
+            border: 2px solid rgba(6, 182, 212, 0.3);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: inset 0 0 100px rgba(6, 182, 212, 0.15);
+        }
+
+        .hud-scanline {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.4);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--mars-cyan);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+
+    <!-- NASA Space Apps Top Banner -->
+    <header class="border-b border-slate-800 bg-slate-900/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40 backdrop-blur-md">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center font-bold text-lg shadow-lg shadow-red-900/40">
+                ♂
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="font-display font-bold text-lg tracking-wider text-white">ARES-EVA</span>
+                    <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">
+                        NASA Space Apps 2026
+                    </span>
+                </div>
+                <div class="text-xs text-slate-400 font-mono-tech">
+                    Hyperlocalized Martian Surface Navigation & EVA Survival System
+                </div>
+            </div>
+        </div>
+
+        <!-- Mission Selector -->
+        <div class="flex items-center gap-3">
+            <label class="text-xs text-slate-400 uppercase font-mono tracking-wider">Mission Campaign:</label>
+            <select id="missionSelector" class="bg-slate-800 border border-slate-700 text-cyan-300 text-xs rounded px-3 py-1.5 font-mono focus:outline-none focus:border-cyan-500">
+                <option value="mount-sharp-boxwork" selected>Mount Sharp Boxwork Network (Curiosity 2025-2026 Focus)</option>
+                <option value="jezero-crater-delta">Jezero Crater Neretva Vallis Delta (Perseverance Focus)</option>
+            </select>
+
+            <!-- Mode Switcher -->
+            <div class="flex rounded bg-slate-800 p-0.5 border border-slate-700">
+                <button data-mode="workstation" class="mode-btn active px-3 py-1 text-xs rounded font-medium text-slate-300 hover:text-white transition">
+                    🖥️ Habitat Console
+                </button>
+                <button data-mode="visor" class="mode-btn px-3 py-1 text-xs rounded font-medium text-slate-300 hover:text-white transition">
+                    🪖 Visor HUD
+                </button>
+            </div>
+
+            <button id="btnToggleAudio" class="text-xs px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-slate-300 hover:text-cyan-400 font-mono">
+                🔊 AUDIO ON
+            </button>
+        </div>
+    </header>
+
+    <!-- Environmental Telemetry Strip (Simulated REMS / MEDA / RAD Sensors) -->
+    <section class="bg-slate-900/60 border-b border-slate-800/80 px-4 py-1.5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-[11px] font-mono">
+        <div class="flex items-center gap-1.5 text-slate-300">
+            <span class="text-slate-500">AIR TEMP:</span>
+            <span id="envAirTemp" class="text-cyan-400 font-bold">-58°C</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-slate-300">
+            <span class="text-slate-500">SURFACE PRESS:</span>
+            <span id="envPressure" class="text-cyan-400 font-bold">7.42 hPa</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-slate-300">
+            <span class="text-slate-500">WIND VECTOR:</span>
+            <span id="envWind" class="text-cyan-400 font-bold">4.8 m/s ENE</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-slate-300">
+            <span class="text-slate-500">RAD DOSE (RAD):</span>
+            <span id="envRadiation" class="text-amber-400 font-bold">0.68 mSv/d</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-slate-300">
+            <span class="text-slate-500">DUST OPACITY (τ):</span>
+            <span id="envDust" class="text-cyan-400 font-bold">0.48</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-slate-300">
+            <span class="text-slate-500">SUN ILLUM:</span>
+            <span class="text-emerald-400 font-bold">542 W/m² (Nominal)</span>
+        </div>
+    </section>
+
+    <!-- Main Workspace Layout -->
+    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 overflow-hidden">
+
+        <!-- LEFT COLUMN: Layer Controls & Route Sequencer (3 Cols) -->
+        <aside class="lg:col-span-3 flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-140px)]">
+            
+            <!-- Layer Control Box -->
+            <div class="glass-panel p-3.5 rounded-lg space-y-2.5">
+                <div class="flex items-center justify-between border-b border-slate-700 pb-1.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">NASA Science Layers</span>
+                    <span class="text-[10px] text-slate-400 font-mono">MOLA • HiRISE • CRISM</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                        <input type="checkbox" data-layer="optical" class="layer-toggle rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0" checked>
+                        <span>HiRISE Optical Base</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                        <input type="checkbox" data-layer="topography" class="layer-toggle rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0" checked>
+                        <span>MOLA Elevation Contours</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                        <input type="checkbox" data-layer="slopes" class="layer-toggle rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
+                        <span class="text-amber-300">Slope Gradient Hazard</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                        <input type="checkbox" data-layer="crism" class="layer-toggle rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0" checked>
+                        <span class="text-pink-400">CRISM Mineralogy</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                        <input type="checkbox" data-layer="radiation" class="layer-toggle rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
+                        <span class="text-rose-400">RAD Space Weather</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                        <input type="checkbox" data-layer="hazards" class="layer-toggle rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0" checked>
+                        <span class="text-yellow-400">Terrain Obstacles</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                        <input type="checkbox" data-layer="grid" class="layer-toggle rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0" checked>
+                        <span>MGRS Coordinate Grid</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                        <input type="checkbox" data-layer="route" class="layer-toggle rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0" checked>
+                        <span class="text-cyan-300">EVA Trajectory Vector</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Route Waypoint Sequencer -->
+            <div class="glass-panel p-3.5 rounded-lg flex-1 flex flex-col space-y-2.5">
+                <div class="flex items-center justify-between border-b border-slate-700 pb-1.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">Marswalk Sequencer</span>
+                    <span class="text-[10px] text-slate-400 font-mono">Click map to add</span>
+                </div>
+
+                <div id="waypointSequenceList" class="space-y-2 overflow-y-auto max-h-56 pr-1">
+                    <!-- Dynamic Waypoint Items injected by app.js -->
+                </div>
+
+                <!-- Emergency Abort & Mission Actions -->
+                <div class="pt-2 border-t border-slate-800 flex flex-col gap-2">
+                    <button id="btnEmergencyAbort" class="w-full py-2 px-3 rounded bg-red-950/80 hover:bg-red-900 border border-red-700 text-red-200 text-xs font-mono font-bold flex items-center justify-center gap-2 transition shadow-lg shadow-red-950/50">
+                        <span>🚨</span> ENGAGE EMERGENCY ABORT ROUTE
+                    </button>
+                    <button id="btnExportPlan" class="w-full py-1.5 px-3 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-mono flex items-center justify-center gap-2 transition">
+                        <span>📋</span> Export NASA EVA Plan (JSON)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Geological Unit Reference Legend -->
+            <div class="glass-panel p-3 rounded-lg text-xs space-y-1.5">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono block">CRISM Geologic Signatures</span>
+                <div class="space-y-1 text-[11px]">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 flex-shrink-0"></span>
+                        <span class="text-slate-300">Boxwork Vein (Sulfate & Silica)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-pink-500 flex-shrink-0"></span>
+                        <span class="text-slate-300">Polyhydrated Mg-Sulfates</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                        <span class="text-slate-300">Polymictic Debris / Clay</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                        <span class="text-slate-300">Lacustrine Smectites / Carbonates</span>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- CENTER COLUMN: Interactive Tactical Map & HUD Overlay (6 Cols) -->
+        <main class="lg:col-span-6 flex flex-col gap-3">
+            
+            <!-- Map Container & Canvas -->
+            <div class="relative glass-panel rounded-xl overflow-hidden flex-1 min-h-[460px] flex items-center justify-center border border-slate-700 shadow-2xl">
+                
+                <!-- HTML5 Canvas for Interactive Map -->
+                <canvas id="marsMapCanvas" width="900" height="580" class="w-full h-full object-cover cursor-crosshair"></canvas>
+
+                <!-- Map Coordinates & Scale HUD Overlay in Canvas Corner -->
+                <div class="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded border border-slate-700/80 text-xs font-mono flex items-center gap-3 pointer-events-none">
+                    <div>
+                        <span class="text-slate-400">TARGET:</span>
+                        <span id="missionTitle" class="text-cyan-300 font-bold ml-1">Mount Sharp Boxwork Network</span>
+                    </div>
+                    <div class="text-slate-500">|</div>
+                    <div id="missionSubtitle" class="text-slate-300">4.728° S, 137.382° E</div>
+                </div>
+
+                <!-- Cursor Context Prompt -->
+                <div class="absolute bottom-3 left-3 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded border border-slate-800 text-[10px] text-slate-400 font-mono pointer-events-none">
+                    🎯 Click map to place science waypoint • Click hazards for safety buffer specs
+                </div>
+
+                <!-- FULLSCREEN / POPUP VISOR HUD OVERLAY (Toggled by Mode Button) -->
+                <div id="visorHudOverlay" class="visor-container hidden pointer-events-none">
+                    <div class="hud-scanline"></div>
+                    
+                    <!-- Top HUD Bar: Artificial Horizon & Compass Tape -->
+                    <div class="absolute top-4 inset-x-8 flex justify-between items-center text-cyan-300 font-mono text-xs">
+                        <div class="flex items-center gap-2 bg-slate-950/70 px-3 py-1 rounded border border-cyan-500/40">
+                            <span class="text-cyan-500 font-bold">BEARING:</span>
+                            <span id="hudCompassBearing" class="font-bold">034° NNE</span>
+                        </div>
+                        <div class="text-center bg-slate-950/70 px-4 py-1 rounded border border-cyan-500/40">
+                            <span class="text-slate-400 text-[10px] block">TARGET OBJECTIVE</span>
+                            <span id="hudTargetName" class="font-bold text-amber-300">Alpha Boxwork Ridge System</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-950/70 px-3 py-1 rounded border border-cyan-500/40">
+                            <span class="text-cyan-500 font-bold">RANGE:</span>
+                            <span id="hudTargetDist" class="font-bold">410 m</span>
+                        </div>
+                    </div>
+
+                    <!-- Center Artificial Reticle -->
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div class="w-48 h-48 border border-cyan-500/30 rounded-full flex items-center justify-center relative">
+                            <div class="w-2 h-2 bg-cyan-400 rounded-full animate-ping"></div>
+                            <!-- Crosshairs -->
+                            <div class="absolute w-full h-[1px] bg-cyan-500/20"></div>
+                            <div class="absolute h-full w-[1px] bg-cyan-500/20"></div>
+                            <div class="absolute top-2 text-[9px] text-cyan-400/80 font-mono">EVA PITCH -2°</div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Left: Suit Life Support Telemetry -->
+                    <div class="absolute bottom-6 left-6 bg-slate-950/80 border border-cyan-500/40 rounded-lg p-3 text-xs font-mono space-y-1.5 backdrop-blur-md">
+                        <div class="text-[10px] text-cyan-400 font-bold uppercase tracking-wider border-b border-cyan-900 pb-1">
+                            SUIT TELEMETRY (A7L-MARS)
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <span class="text-slate-400">HEART RATE:</span>
+                            <span id="hudHeartRate" class="text-rose-400 font-bold">118 BPM</span>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <span class="text-slate-400">O2 TANK:</span>
+                            <span id="hudO2Pct" class="text-cyan-300 font-bold">88% (4.3 psi)</span>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <span class="text-slate-400">LOCAL SLOPE:</span>
+                            <span id="hudLiveSlope" class="text-amber-300 font-bold">12.4°</span>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <span class="text-slate-400">COSMIC RAD:</span>
+                            <span id="hudRadiationRate" class="text-red-400 font-bold">0.68 mSv/d</span>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Right: Terrain Warning Indicator -->
+                    <div class="absolute bottom-6 right-6 bg-slate-950/80 border border-amber-500/40 rounded-lg p-3 text-xs font-mono backdrop-blur-md max-w-xs">
+                        <div class="text-[10px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                            <span>⚠️</span> TERRAIN HAZARD WARNING
+                        </div>
+                        <p class="text-[11px] text-slate-300 leading-tight">
+                            Approaching fracture boxwork rim. Maintain 3-point contact; micro-talus slip hazard.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Elevation Cross-Section Chart -->
+            <div class="glass-panel p-3 rounded-lg space-y-1.5">
+                <div class="flex items-center justify-between text-xs font-mono">
+                    <span class="font-bold text-cyan-400 uppercase tracking-wider">Topographic Cross-Section & Slope Profile</span>
+                    <span class="text-slate-400 text-[10px]">Real-Time Profile across Active Route Polyline</span>
+                </div>
+                <div class="relative h-28 w-full bg-slate-950/80 rounded border border-slate-800 overflow-hidden">
+                    <canvas id="elevationProfileCanvas" width="700" height="110" class="w-full h-full"></canvas>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- RIGHT COLUMN: Mission Telemetry, Consumables Budget & Science Inspector (3 Cols) -->
+        <aside class="lg:col-span-3 flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-140px)]">
+
+            <!-- Route Feasibility Alert Banner -->
+            <div id="routeStatusAlert" class="status-banner banner-nominal">
+                <span class="icon">✓</span>
+                <strong>FLIGHT DYNAMICS NOMINAL:</strong> Route certified for single-day EVA.
+            </div>
+
+            <!-- Consumables & Point of No Return Dashboard -->
+            <div class="glass-panel p-3.5 rounded-lg space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-700 pb-1.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">Traverse Budget & PNR</span>
+                    <span class="text-[10px] text-slate-400 font-mono">NASA Safety Rules</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="metric-card">
+                        <div class="text-[10px] font-mono text-slate-400">TOTAL DISTANCE</div>
+                        <div id="metricDistance" class="metric-val text-cyan-300">3.42 km</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="text-[10px] font-mono text-slate-400">EST. DURATION</div>
+                        <div id="metricDuration" class="metric-val text-cyan-300">2.8 hrs</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="text-[10px] font-mono text-slate-400">ELEVATION DELTA</div>
+                        <div id="metricClimb" class="metric-val text-emerald-400 text-sm mt-1">+220m / -45m</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="text-[10px] font-mono text-slate-400">MAX SLOPE GRADIENT</div>
+                        <div id="metricMaxSlope" class="metric-val text-amber-400">18.2°</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="text-[10px] font-mono text-slate-400">O2 RESERVE MARGIN</div>
+                        <div id="metricOxygen" class="metric-val text-cyan-400">64%</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="text-[10px] font-mono text-slate-400">POINT OF NO RETURN</div>
+                        <div id="metricPNR" class="metric-val text-rose-400">T+110m</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Science Target & Raw NASA Imagery Inspector -->
+            <div class="glass-panel p-3.5 rounded-lg flex-1 flex flex-col space-y-2">
+                <div class="flex items-center justify-between border-b border-slate-700 pb-1.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-amber-400 font-mono">Field Science & POV Camera</span>
+                    <span class="text-[10px] text-slate-400 font-mono">Mastcam • ChemCam</span>
+                </div>
+
+                <div id="waypointDetailContent" class="flex-1 overflow-y-auto">
+                    <!-- Dynamic Science & NASA Imagery inserted by app.js -->
+                </div>
+            </div>
+
+            <!-- Mission Overview Card -->
+            <div class="glass-panel p-3 rounded-lg text-xs space-y-1 text-slate-300">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono block">Campaign Background</span>
+                <p id="missionOverviewText" class="text-[11px] text-slate-400 leading-relaxed">
+                    Boxworks are complex 3D ridges formed when groundwater circulated through bedrock fractures, precipitating durable minerals before erosion stripped the softer surrounding matrix.
+                </p>
+            </div>
+
+        </aside>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
