@@ -1,0 +1,66 @@
+{
+  "manifestVersion": "1.0.0",
+  "project": "martian-map",
+  "challenge": "NASA Space Apps Challenge 2026 - Interplanetary Survival Guide: Martian Map",
+  "datasets": [
+    {
+      "id": "DTEEC_006855_1750_007501_1750_A01",
+      "name": "Chasm in Gale Crater's Interior Mound (Sakarya Vallis)",
+      "target": "Mars",
+      "targetRegion": "Gale Crater / Aeolis Mons",
+      "instrument": "High Resolution Imaging Science Experiment (HiRISE)",
+      "spacecraft": "Mars Reconnaissance Orbiter (MRO)",
+      "producerInstitution": "University of Arizona Lunar & Planetary Laboratory / NASA JPL",
+      "principalInvestigator": "Alfred McEwen",
+      "stereoPair": [
+        "PSP_006855_1750",
+        "PSP_007501_1750"
+      ],
+      "dtmVersion": "A01",
+      "officialCatalogUrl": "https://www.uahirise.org/dtm/dtm.php?ID=PSP_006855_1750",
+      "downloadUrl": "https://hirise-pds.lpl.arizona.edu/PDS/DTM/PSP/ORB_006800_006899/PSP_006855_1750_PSP_007501_1750/DTEEC_006855_1750_007501_1750_A01.IMG",
+      "extrasReadmeUrl": "https://hirise-pds.lpl.arizona.edu/PDS/EXTRAS/DTM/PSP/ORB_006800_006899/PSP_006855_1750_PSP_007501_1750/README_DTEEC_006855_1750_007501_1750_A01.TXT",
+      "fileFormat": "PDS3 IMG (32-bit floating-point raster with detached or embedded ASCII PDS header)",
+      "fileSizeBytes": 437676204,
+      "fileSizeMB": 438,
+      "rasterDimensions": {
+        "lines": 15897,
+        "samples": 6883,
+        "bands": 1
+      },
+      "gridResolution": {
+        "metersPerPixel": 1.0116912775905,
+        "pixelsPerDegree": 58587.06624417
+      },
+      "projection": {
+        "type": "EQUIRECTANGULAR",
+        "projectionLatitudeType": "PLANETOCENTRIC",
+        "coordinateSystemName": "PLANETOCENTRIC",
+        "positiveLongitudeDirection": "EAST",
+        "centerLatitudeDegrees": -5.0,
+        "centerLongitudeDegrees": 137.23,
+        "sphereRadiusKm": 3396.0368126024,
+        "lineProjectionOffset": -290029.50000001,
+        "sampleProjectionOffset": 3409.5000000001
+      },
+      "spatialBoundingBox": {
+        "minimumLatitudeDegrees": -5.2217247582496,
+        "maximumLatitudeDegrees": -4.9503982410223,
+        "westernmostLongitudeDegrees": 137.17157717,
+        "easternmostLongitudeDegrees": 137.28950561
+      },
+      "elevation": {
+        "verticalDatum": "MOLA Areoid Gravitational Equipotential Surface (Mars 2000 Datum, Smith et al. 2001)",
+        "units": "meters",
+        "validMinimum": -4043.75,
+        "validMaximum": -2415.92,
+        "noDataValue": -3.4028226550889045e+38,
+        "noDataHexConstant": "16#FF7FFFFB#"
+      },
+      "explorationRelationship": {
+        "relationshipToCandidateBoxwork": "The verified DTM covers a 16 km x 7 km chasm in the interior mound ~15.4 km west of the candidate Mount Sharp boxwork structures (centered near 5.06° S, 137.46° E). It serves as the authoritative high-resolution terrain validation testbed for the terrain pipeline.",
+        "usage": "Testbed for 1m elevation sampling, slope analysis, and 3D heightfield generation."
+      }
+    }
+  ]
+}

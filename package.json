@@ -1,0 +1,20 @@
+{
+  "name": "martian-map",
+  "version": "1.0.0",
+  "description": "NASA Space Apps Challenge 2026: Interplanetary Survival Guide: Martian Map",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/**/*.test.js",
+    "start": "node -e \"const http=require('http'),fs=require('fs'),path=require('path');http.createServer((req,res)=>{let f=req.url==='/'?'index.html':req.url.slice(1).split('?')[0];let p=path.join(process.cwd(),f);if(fs.existsSync(p)&&fs.statSync(p).isFile()){let m={'html':'text/html','js':'application/javascript','css':'text/css','json':'application/json','png':'image/png','jpg':'image/jpeg'}[path.extname(p).slice(1)]||'application/octet-stream';res.writeHead(200,{'Content-Type':m,'Access-Control-Allow-Origin':'*'});fs.createReadStream(p).pipe(res);}else{res.writeHead(404);res.end('Not Found');}}).listen(8000,()=>console.log('martian-map server running at http://localhost:8000'));\""
+  },
+  "keywords": [
+    "nasa-space-apps",
+    "mars",
+    "marswalk",
+    "gale-crater",
+    "leaflet",
+    "threejs",
+    "planetary-gis"
+  ],
+  "license": "MIT"
+}
