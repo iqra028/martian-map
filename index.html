@@ -47,12 +47,30 @@
     color: var(--stop); 
     background: rgba(255, 122, 92, 0.08);
   }
+  #status.caution {
+    border-color: #f2c078;
+    color: #f2c078;
+    background: rgba(242, 192, 120, 0.08);
+  }
   
   #stops { padding-left: 22px; margin: 0; font-size: 15px; line-height: 1.7; color: var(--text); }
   #stops li { margin-bottom: 8px; }
   #stops li::marker { color: var(--accent); font-weight: bold; }
   
   #warn { margin-top: 14px; font-size: 14px; color: var(--stop); font-weight: 500; }
+  .layer-note { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  #geology-status { min-height: 20px; margin-top: 6px; font-size: 13px; color: var(--muted); }
+  #geology-status.error { color: var(--stop); }
+  .opacity-control { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .opacity-control label { flex: 1; font-size: 14px; }
+  .opacity-control input { width: 140px; accent-color: var(--accent); }
+  .opacity-control output { width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+  #terrain-legend { list-style: none; padding: 0; margin: 8px 0 0; font-size: 13px; line-height: 1.7; }
+  #terrain-legend li { display: flex; align-items: center; gap: 8px; }
+  .legend-swatch { width: 12px; height: 12px; flex: 0 0 12px; border-radius: 2px; }
+  .legend-go { background: var(--go); }
+  .legend-caution { background: #f2c078; }
+  .legend-avoid { background: var(--stop); }
   
   #coords { 
     margin-top: 14px; 
@@ -109,7 +127,22 @@
   <aside id="side">
     <h1 id="title"></h1>
     <p id="goal"></p>
-    <div id="status"></div>
+    <h2>Map layers</h2>
+    <p>Use the layer control on the map to switch basemaps and toggle overlays.</p>
+    <div class="opacity-control">
+      <label for="mola-opacity">MOLA overlay opacity</label>
+      <input id="mola-opacity" type="range" min="0" max="100" value="60">
+      <output id="mola-opacity-value" for="mola-opacity">60%</output>
+    </div>
+    <p class="layer-note">USGS provides the geologic units; the safety categories below are app interpretations, not NASA/USGS ratings.</p>
+    <div id="geology-status" role="status" aria-live="polite"></div>
+    <ul id="terrain-legend" aria-label="App-interpreted terrain assessment legend">
+      <li><span class="legend-swatch legend-go"></span><b>GO</b> — Smooth plains (illustrative)</li>
+      <li><span class="legend-swatch legend-caution"></span><b>CAUTION</b> — Knobbly / fractured terrain</li>
+      <li><span class="legend-swatch legend-avoid"></span><b>AVOID</b> — Sand ripple / potential sinkage</li>
+    </ul>
+    <p class="layer-note">Polygons are provisional interpretations from the challenge map/CTX context and require validation; they are not survey-grade boundaries.</p>
+    <div id="status" role="status" aria-live="polite"></div>
     <div id="warn"></div>
     <h2>Route</h2>
     <div class="row"><span>Distance (round trip)</span><span id="dist"></span></div>
@@ -185,11 +218,24 @@ var ROUTE = [
   }
 ];
 
-/* Danger zones — polygons of [lat, lng] corners.
-   Positioned over visible knobbly/rough ground entirely south of the black swath. */
-var HAZARDS = [
+/* App-interpreted terrain zones — polygons of [lat, lng] corners.
+   The GO footprint is illustrative; CAUTION and AVOID are estimated from CTX imagery. */
+var TERRAIN_ZONES = [
   {
-    name: "Rough terrain (estimated from CTX imagery)",
+    category: "GO",
+    name: "Smooth plains near base camp (illustrative app interpretation)",
+    color: "#7ed08a",
+    points: [
+      [-5.0820, 137.4450],
+      [-5.0780, 137.4450],
+      [-5.0780, 137.4530],
+      [-5.0820, 137.4530]
+    ]
+  },
+  {
+    category: "CAUTION",
+    name: "Knobbly / fractured terrain (estimated from CTX imagery)",
+    color: "#f2c078",
     points: [
       [-5.072, 137.454],
       [-5.068, 137.461],
@@ -198,7 +244,9 @@ var HAZARDS = [
     ]
   },
   {
-    name: "Sand ripple field (potential sinkage, identified from CTX imagery by eye)",
+    category: "AVOID",
+    name: "Sand ripple field — potential sinkage (estimated from CTX imagery)",
+    color: "#ff7a5c",
     points: [
       [-5.085, 137.465],
       [-5.080, 137.475],
@@ -212,18 +260,22 @@ var HAZARDS = [
 var LAYERS = {
   "Elevation — MOLA colour (463 m)": {
     url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
+    attribution: '<a href="https://trek.nasa.gov/mars" target="_blank" rel="noopener">NASA Mars Trek — MOLA</a>',
     maxNative: 7
   },
   "Visible — Viking Color Mosaic (232 m)": {
     url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
+    attribution: '<a href="https://trek.nasa.gov/mars" target="_blank" rel="noopener">NASA Mars Trek — Viking</a>',
     maxNative: 7
   },
   "Imagery — CTX visible (5 m)": {
     url: "https://astro.arcgis.com/arcgis/rest/services/OnMars/CTX/MapServer/tile/{z}/{y}/{x}",
+    attribution: '<a href="https://astro.arcgis.com/arcgis/rest/services/OnMars/CTX/MapServer" target="_blank" rel="noopener">USGS Astrogeology — CTX</a>',
     maxNative: 12
   },
   "Thermal — THEMIS Day IR (100 m)": {
     url: "https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png",
+    attribution: '<a href="https://trek.nasa.gov/mars" target="_blank" rel="noopener">NASA Mars Trek — THEMIS</a>',
     maxNative: 9
   }
 };
@@ -239,10 +291,9 @@ var map = L.map("map", {
   maxZoom: 14
 });
 
-/* Build base layers from LAYERS config */
-var overlays = {};
+/* Build tile layers; keep visible-image basemaps separate from raster overlays. */
+var tileLayers = {};
 var failed = {};
-var firstLayer = true;
 Object.keys(LAYERS).forEach(function(label) {
   var cfg = LAYERS[label];
   var layer = L.tileLayer(cfg.url, {
@@ -251,21 +302,43 @@ Object.keys(LAYERS).forEach(function(label) {
     maxNativeZoom: cfg.maxNative,
     maxZoom: 14,
     noWrap: true,
-    attribution: '<a href="https://trek.nasa.gov/mars" target="_blank">NASA / USGS / Mars Trek</a>'
+    attribution: cfg.attribution
   });
   layer.on("tileerror", function() { failed[label] = true; showWarn(); });
-  overlays[label] = layer;
-  if (firstLayer) { layer.addTo(map); firstLayer = false; }
+  tileLayers[label] = layer;
+});
+var ctxLayer = tileLayers["Imagery — CTX visible (5 m)"];
+var molaLayer = tileLayers["Elevation — MOLA colour (463 m)"];
+var baseLayers = {
+  "Imagery — CTX visible (5 m)": ctxLayer,
+  "Visible — Viking Color Mosaic (232 m)": tileLayers["Visible — Viking Color Mosaic (232 m)"]
+};
+ctxLayer.addTo(map);
+molaLayer.setOpacity(0.6).addTo(map);
+
+var opacitySlider = document.getElementById("mola-opacity");
+var opacityValue = document.getElementById("mola-opacity-value");
+opacitySlider.addEventListener("input", function() {
+  var opacity = Number(opacitySlider.value) / 100;
+  molaLayer.setOpacity(opacity);
+  opacityValue.value = opacitySlider.value + "%";
 });
 
-/* Danger zone polygons */
-var hazardGroup = L.layerGroup();
-HAZARDS.forEach(function(h) {
-  L.polygon(h.points, {
-    color: "#ff7a5c", weight: 2, fillOpacity: 0.35
-  }).bindPopup("<b>⚠️ Hazard:</b> " + h.name).addTo(hazardGroup);
+/* App-interpreted GO / CAUTION / AVOID terrain overlay */
+var terrainGroup = L.layerGroup();
+TERRAIN_ZONES.forEach(function(zone) {
+  var popup = document.createElement("div");
+  var heading = document.createElement("strong");
+  heading.textContent = zone.category + ": " + zone.name;
+  popup.appendChild(heading);
+  var note = document.createElement("div");
+  note.textContent = "App interpretation; not an official NASA/USGS safety rating.";
+  popup.appendChild(note);
+  L.polygon(zone.points, {
+    color: zone.color, weight: 2, fillColor: zone.color, fillOpacity: 0.28
+  }).bindPopup(popup).addTo(terrainGroup);
 });
-hazardGroup.addTo(map);
+terrainGroup.addTo(map);
 
 /* Route polyline + markers */
 var routeGroup = L.layerGroup();
@@ -291,20 +364,40 @@ var geoLoaded = false;
 function loadGeology() {
   if (geoLoaded) return;
   geoLoaded = true;
+  var geologyStatus = document.getElementById("geology-status");
+  geologyStatus.classList.remove("error");
+  geologyStatus.textContent = "Loading USGS geology units…";
   var url = "https://services.arcgis.com/nzS0F0zdNLvs7nc8/ArcGIS/rest/services/Mars_Geology_feature_layer/FeatureServer/0/query" +
-    "?where=1%3D1&geometry=136.5,-6,138.5,-4&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&outFields=*&f=geojson";
-  fetch(url).then(function(r){ return r.json(); }).then(function(g){
-    if (!g.features || !g.features.length) throw new Error("no features");
-    L.geoJSON(g, {
-      style: { color: "#e8a35c", weight: 1, fillOpacity: 0.12 },
+    "?where=1%3D1&geometry=136.5,-6,138.5,-4&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&outFields=Unit%2CUnitDesc&f=geojson";
+  fetch(url).then(function(response) {
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    return response.json();
+  }).then(function(g) {
+    if (!g.features || !g.features.length) throw new Error("No mapped units returned for this area.");
+    var geologyLayer = L.geoJSON(g, {
+      style: { color: "#f2c078", weight: 1.5, fillColor: "#e8a35c", fillOpacity: 0.18 },
       onEachFeature: function(f, l) {
-        var rows = Object.keys(f.properties || {}).map(function(k){ return k + ": " + f.properties[k]; }).join("<br>");
-        l.bindPopup("<b>USGS geologic unit</b><br>" + rows);
+        var properties = f.properties || {};
+        var content = document.createElement("div");
+        var heading = document.createElement("strong");
+        heading.textContent = "USGS geologic unit";
+        content.appendChild(heading);
+        ["Unit", "UnitDesc"].forEach(function(key) {
+          if (properties[key] == null) return;
+          var row = document.createElement("div");
+          row.textContent = key + ": " + properties[key];
+          content.appendChild(row);
+        });
+        l.bindPopup(content);
       }
     }).addTo(geoGroup);
-  }).catch(function(){
-    document.getElementById("warn").textContent =
-      "Geologic layer could not load. Use the USGS geologic map website instead and note the unit names in ROUTE.";
+    geologyStatus.innerHTML = "Loaded " + g.features.length +
+      " mapped unit(s). Source: <a href=\"https://astrogeology.usgs.gov/search/map/mars-geologic-maps/global-geologic-map-of-mars\" target=\"_blank\" rel=\"noopener\">USGS global geologic map of Mars</a> (1:20,000,000; regional context).";
+  }).catch(function(error) {
+    geoLoaded = false;
+    geologyStatus.classList.add("error");
+    geologyStatus.textContent = "USGS geology could not load: " + error.message +
+      ". Other map layers remain available.";
   });
 }
 map.on("overlayadd", function(e){ if (e.layer === geoGroup) loadGeology(); });
@@ -345,9 +438,11 @@ dtmRect.addTo(dtmGroup);
 dtmGroup.addTo(map);
 
 /* Layer control */
-L.control.layers(overlays, {
+L.control.layers(baseLayers, {
+  "Elevation — MOLA colour (463 m)": molaLayer,
+  "Thermal — THEMIS Day IR (100 m)": tileLayers["Thermal — THEMIS Day IR (100 m)"],
   "🟦 Verified HiRISE DTM (1m)": dtmGroup,
-  "⚠️ Danger zones": hazardGroup,
+  "Terrain safety (app interpretation)": terrainGroup,
   "🟢 Route": routeGroup,
   "Geologic units (USGS, regional)": geoGroup
 }, { collapsed: false }).addTo(map);
@@ -372,20 +467,44 @@ function insidePoly(pt, poly) {
   return inside;
 }
 function segmentHitsHazard(a, b, poly) {
-  for (var t=0; t<=1; t+=0.02) {
-    var pt = [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
-    if (insidePoly(pt, poly)) return true;
+  if (insidePoly(a, poly) || insidePoly(b, poly)) return true;
+  function cross(p1, p2, p3) {
+    return (p2[1] - p1[1]) * (p3[0] - p1[0]) -
+      (p2[0] - p1[0]) * (p3[1] - p1[1]);
+  }
+  function onSegment(p1, p2, point) {
+    return point[0] >= Math.min(p1[0], p2[0]) - 1e-10 &&
+      point[0] <= Math.max(p1[0], p2[0]) + 1e-10 &&
+      point[1] >= Math.min(p1[1], p2[1]) - 1e-10 &&
+      point[1] <= Math.max(p1[1], p2[1]) + 1e-10;
+  }
+  function intersects(p1, p2, p3, p4) {
+    var c1 = cross(p1, p2, p3), c2 = cross(p1, p2, p4);
+    var c3 = cross(p3, p4, p1), c4 = cross(p3, p4, p2);
+    var epsilon = 1e-10;
+    if (((c1 > epsilon && c2 < -epsilon) || (c1 < -epsilon && c2 > epsilon)) &&
+        ((c3 > epsilon && c4 < -epsilon) || (c3 < -epsilon && c4 > epsilon))) return true;
+    return (Math.abs(c1) <= epsilon && onSegment(p1, p2, p3)) ||
+      (Math.abs(c2) <= epsilon && onSegment(p1, p2, p4)) ||
+      (Math.abs(c3) <= epsilon && onSegment(p3, p4, p1)) ||
+      (Math.abs(c4) <= epsilon && onSegment(p3, p4, p2));
+  }
+  for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    if (intersects(a, b, poly[j], poly[i])) return true;
   }
   return false;
 }
 
-/* Compute totals */
-var total = 0, hits = [];
+/* Compute totals and assess intersections with app-interpreted terrain zones. */
+var total = 0, zoneHits = { GO: [], CAUTION: [], AVOID: [] };
 for (var i = 0; i < loop.length-1; i++) {
   total += distKm(loop[i], loop[i+1]);
-  HAZARDS.forEach(function(h) {
-    if (segmentHitsHazard(loop[i], loop[i+1], h.points) && hits.indexOf(h.name) < 0)
-      hits.push(h.name);
+  TERRAIN_ZONES.forEach(function(zone) {
+    if (zone.category !== "GO" &&
+        segmentHitsHazard(loop[i], loop[i+1], zone.points) &&
+        zoneHits[zone.category].indexOf(zone.name) < 0) {
+      zoneHits[zone.category].push(zone.name);
+    }
   });
 }
 
@@ -399,11 +518,15 @@ document.getElementById("time").textContent   =
   Math.floor(mins/60) + " h " + Math.round(mins%60) + " min";
 
 var st = document.getElementById("status");
-if (hits.length) {
+if (zoneHits.AVOID.length) {
   st.className = "bad";
-  st.textContent = "NO-GO: route crosses " + hits.join(", ");
+  st.textContent = "NO-GO: route intersects AVOID zone — " + zoneHits.AVOID.join(", ");
+} else if (zoneHits.CAUTION.length) {
+  st.className = "caution";
+  st.textContent = "CAUTION: route intersects — " + zoneHits.CAUTION.join(", ");
 } else {
-  st.textContent = "GO: route avoids all marked danger zones";
+  st.className = "";
+  st.textContent = "GO: route avoids all marked CAUTION and AVOID zones";
 }
 
 var ol = document.getElementById("stops");
