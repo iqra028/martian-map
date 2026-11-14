@@ -9,3 +9,7 @@ Thumbs.db
 # Scratch / notes
 scratch/
 *.log
+
+# Ignore docs
+SUBMISSION_GUIDE.md
+README.md
