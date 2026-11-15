@@ -95,11 +95,13 @@ a { color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent
 [data-level="go"] { --lvl: var(--nominal); }
 [data-level="caution"] { --lvl: var(--caution); }
 [data-level="nogo"] { --lvl: var(--warning); }
-.verdict { margin: 4px 0 14px; }
-.verdict-call { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; line-height: 1.25; }
-.verdict-call .poll-mark { width: 12px; height: 12px; color: var(--lvl, var(--text-3)); }
-.verdict-why { margin-top: 4px; color: var(--text-2); }
-.verdict[data-level="caution"] .poll-mark { border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); width: 13px; height: 13px; }
+.verdict { display: grid; grid-template-columns: 18px 1fr; column-gap: 10px; margin: 2px 0 16px; }
+.verdict-call { display: contents; font-size: 26px; font-weight: 700; line-height: 1.2; letter-spacing: -.015em; }
+.verdict-call em { font-style: normal; color: var(--lvl); }
+.verdict[data-level="nogo"] .verdict-call > span:last-child { color: var(--warning); }
+.verdict-call .poll-mark { width: 14px; height: 14px; margin-top: 9px; justify-self: center; color: var(--lvl, var(--text-3)); }
+.verdict-why { grid-column: 2; margin-top: 6px; color: var(--text-2); font-size: 14px; }
+.verdict[data-level="caution"] .poll-mark { border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); width: 16px; height: 15px; margin-top: 8px; }
 .verdict[data-level="nogo"] .poll-mark { border-radius: 2px; }
 .poll-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .poll-row {

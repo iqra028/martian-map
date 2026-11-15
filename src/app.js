@@ -19,7 +19,6 @@ const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const clone = (route) => route.map((w) => ({ ...w, pos: [...w.pos] }));
 const LEVEL_TEXT = { go: 'Go', caution: 'Caution', nogo: 'No-go' };
 const CALL_TEXT = { ...LEVEL_TEXT, pending: 'Standby' };
-const VERDICT_TEXT = { go: 'Go for EVA', caution: 'Caution — go with care', nogo: 'No-go — do not egress' };
 // ['a', 'b', 'c'] → 'a, b and c'
 const listJoin = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 const PNR_LEVEL = { NOMINAL: 'go', CAUTION: 'caution', CRITICAL_ABORT: 'nogo' };
@@ -226,15 +225,22 @@ function renderMarkers() {
 
 function renderStatus() {
   const { level, poll } = result.verdict;
-  const names = (lvl) => listJoin(poll.filter((p) => p.level === lvl).map((p) => p.label.toLowerCase()));
-  const pending = poll.some((p) => p.level === 'pending') ? ' Space weather check still running.' : '';
+  const of = (lvl) => poll.filter((p) => p.level === lvl);
+  const names = (lvl) => listJoin(of(lvl).map((p) => p.label.toLowerCase()));
+  const n = of('caution').length;
+  const pending = of('pending').length ? ' Space weather check still running.' : '';
+  const title = {
+    go: 'Go for EVA',
+    caution: `Go, with <em>${n} caution${n > 1 ? 's' : ''}</em>`,
+    nogo: 'No-go'
+  }[level];
   const why = {
-    go: `All areas are go.${pending}`,
-    caution: `Review ${names('caution')} before egress.${pending}`,
-    nogo: `Blocked by ${names('nogo')}.${names('caution') ? ` Also review ${names('caution')}.` : ''}`
+    go: `All five areas are go.${pending}`,
+    caution: `Check ${names('caution')} before egress.${pending}`,
+    nogo: `Do not egress: ${names('nogo')} ${of('nogo').length > 1 ? 'are' : 'is'} no-go.`
   }[level];
   $('verdict').dataset.level = level;
-  $('verdict').innerHTML = `<p class="verdict-call"><span class="poll-mark" aria-hidden="true"></span>${VERDICT_TEXT[level]}</p>
+  $('verdict').innerHTML = `<p class="verdict-call"><span class="poll-mark" aria-hidden="true"></span><span>${title}</span></p>
     <p class="verdict-why">${esc(why)}</p>`;
   $('poll').innerHTML = poll.map((p) => `<li class="poll-row" data-level="${p.level}">
       <span class="poll-area">${esc(p.label)}</span>
