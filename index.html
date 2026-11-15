@@ -17,9 +17,6 @@
     <span class="brand-name">Martian Map</span>
     <span class="brand-site" id="site-name">Sakarya Vallis · Gale Crater</span>
   </div>
-  <div id="status-pill" class="pill" role="status" aria-live="polite">
-    <span class="pill-shape" aria-hidden="true"></span><span id="status-pill-text">Loading terrain…</span><span id="status-pill-sub" class="pill-sub"></span>
-  </div>
   <div class="topbar-actions">
     <span id="net-status" class="net" hidden>Offline</span>
     <button type="button" class="btn btn-ghost" id="btn-briefing">Briefing</button>
@@ -61,9 +58,9 @@
     <!-- PLAN -->
     <div class="view" role="tabpanel" id="view-plan" aria-labelledby="tab-plan">
       <section id="status-card" class="poll" aria-labelledby="status-title">
-        <div class="section-row">
-          <h2 id="status-title" class="section-title">Go / no-go poll</h2>
-          <span id="poll-tally" class="poll-tally"></span>
+        <h2 id="status-title" class="kicker">Go / no-go poll</h2>
+        <div id="verdict" class="verdict" role="status" aria-live="polite">
+          <p class="verdict-call">Loading terrain…</p>
         </div>
         <ol id="poll" class="poll-list"></ol>
       </section>

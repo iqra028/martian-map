@@ -63,22 +63,6 @@ a { color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
 .net { font-size: 12px; color: var(--caution); }
 
-/* Status tag: ● go, ▲ caution, ■ no-go */
-.pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 26px; padding: 0 8px; border-radius: 4px;
-  background: var(--surface-2); font-size: 13px; white-space: nowrap;
-}
-#status-pill-text { font-weight: 600; }
-.pill-sub { color: var(--text-2); }
-.pill-sub:not(:empty)::before { content: "·"; margin-right: 6px; color: var(--text-3); }
-.pill-shape, .status-shape { display: inline-block; width: 9px; height: 9px; background: var(--text-3); border-radius: 50%; flex: none; }
-[data-level="go"] .pill-shape, [data-level="go"] .status-shape { background: var(--nominal); }
-[data-level="caution"] .pill-shape, [data-level="caution"] .status-shape { background: var(--caution); border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
-[data-level="nogo"] .pill-shape, [data-level="nogo"] .status-shape { background: var(--warning); border-radius: 1px; }
-.pill[data-level="go"] { background: var(--tint-go); }
-.pill[data-level="caution"] { background: var(--tint-caution); }
-.pill[data-level="nogo"] { background: var(--tint-nogo); }
 
 /* ---------- layout ---------- */
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: 0; }
@@ -108,12 +92,15 @@ a { color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent
 
 /* ---------- go / no-go poll ----------
    Each area answers like a flight-control console: neutral rows, colour only on the answer. */
-.poll-tally { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 13px; }
-.tally-bar { display: inline-flex; gap: 3px; }
-.tally-bar i { width: 14px; height: 4px; border-radius: 2px; background: var(--surface-3); }
-.tally-bar i[data-level="go"] { background: var(--nominal); }
-.tally-bar i[data-level="caution"] { background: var(--caution); }
-.tally-bar i[data-level="nogo"] { background: var(--warning); }
+[data-level="go"] { --lvl: var(--nominal); }
+[data-level="caution"] { --lvl: var(--caution); }
+[data-level="nogo"] { --lvl: var(--warning); }
+.verdict { margin: 4px 0 14px; }
+.verdict-call { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; line-height: 1.25; }
+.verdict-call .poll-mark { width: 12px; height: 12px; color: var(--lvl, var(--text-3)); }
+.verdict-why { margin-top: 4px; color: var(--text-2); }
+.verdict[data-level="caution"] .poll-mark { border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); width: 13px; height: 13px; }
+.verdict[data-level="nogo"] .poll-mark { border-radius: 2px; }
 .poll-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .poll-row {
   display: grid; grid-template-columns: 1fr auto; column-gap: 12px;

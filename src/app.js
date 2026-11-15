@@ -19,6 +19,9 @@ const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const clone = (route) => route.map((w) => ({ ...w, pos: [...w.pos] }));
 const LEVEL_TEXT = { go: 'Go', caution: 'Caution', nogo: 'No-go' };
 const CALL_TEXT = { ...LEVEL_TEXT, pending: 'Standby' };
+const VERDICT_TEXT = { go: 'Go for EVA', caution: 'Caution — go with care', nogo: 'No-go — do not egress' };
+// ['a', 'b', 'c'] → 'a, b and c'
+const listJoin = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 const PNR_LEVEL = { NOMINAL: 'go', CAUTION: 'caution', CRITICAL_ABORT: 'nogo' };
 const SLOPE_COLOR = Object.fromEntries(SLOPE_CLASSES.map((c) => [c.id, c.color]));
 const CREW = {
@@ -223,11 +226,16 @@ function renderMarkers() {
 
 function renderStatus() {
   const { level, poll } = result.verdict;
-  const go = poll.filter((p) => p.level === 'go').length;
-  $('status-pill').dataset.level = level;
-  $('status-pill-text').textContent = LEVEL_TEXT[level];
-  $('status-pill-sub').textContent = `${go} of ${poll.length} go`;
-  $('poll-tally').innerHTML = `<span class="tally-bar" aria-hidden="true">${poll.map((p) => `<i data-level="${p.level}"></i>`).join('')}</span>${go} of ${poll.length} go`;
+  const names = (lvl) => listJoin(poll.filter((p) => p.level === lvl).map((p) => p.label.toLowerCase()));
+  const pending = poll.some((p) => p.level === 'pending') ? ' Space weather check still running.' : '';
+  const why = {
+    go: `All areas are go.${pending}`,
+    caution: `Review ${names('caution')} before egress.${pending}`,
+    nogo: `Blocked by ${names('nogo')}.${names('caution') ? ` Also review ${names('caution')}.` : ''}`
+  }[level];
+  $('verdict').dataset.level = level;
+  $('verdict').innerHTML = `<p class="verdict-call"><span class="poll-mark" aria-hidden="true"></span>${VERDICT_TEXT[level]}</p>
+    <p class="verdict-why">${esc(why)}</p>`;
   $('poll').innerHTML = poll.map((p) => `<li class="poll-row" data-level="${p.level}">
       <span class="poll-area">${esc(p.label)}</span>
       <span class="poll-call"><span class="poll-mark" aria-hidden="true"></span>${CALL_TEXT[p.level]}</span>
@@ -716,8 +724,8 @@ async function boot() {
   try {
     raster = await new ElevationService().load(SITE.terrainHeader);
   } catch (err) {
-    $('status-pill').dataset.level = 'nogo';
-    $('status-pill-text').textContent = 'Terrain unavailable';
+    $('verdict').dataset.level = 'nogo';
+    $('verdict').innerHTML = '<p class="verdict-call"><span class="poll-mark" aria-hidden="true"></span>No-go — terrain unavailable</p>';
     notice(`Could not load the HiRISE terrain model (${err.message}). Reload when online.`);
     return;
   }

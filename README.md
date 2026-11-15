@@ -28,7 +28,7 @@ with the evidence, and the worst answer is the call.
 | **Offline** | Service worker precaches the app, terrain and imagery; orbital tiles are cached as you view them. |
 
 ### UI principles
-Built for someone glancing at it in a suit: one status at the top, big tabular numbers, four tabs
+Built for someone glancing at it in a suit: the call written out in plain words above the poll, big tabular numbers, four tabs
 (Plan · Stop · Environment · Layers) instead of one long page, 44 px touch targets, colour always paired with
 text and shape (● GO, ▲ CAUTION, ■ NO-GO), a quiet document-style dark theme (Notion-like neutral greys,
 tinted callouts, property rows), full keyboard use (arrow keys on tabs,
