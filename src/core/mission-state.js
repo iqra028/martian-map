@@ -85,6 +85,11 @@ export class MissionStore {
     }
   }
 
+  setWaypoints(waypoints) {
+    this._state.waypoints = waypoints;
+    this._notify(['waypoints', 'route']);
+  }
+
   removeWaypoint(index) {
     if (index >= 0 && index < this._state.waypoints.length) {
       this._state.waypoints.splice(index, 1);

@@ -3,452 +3,225 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Marswalk planner</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<style>
-  :root { --bg:#1c1a1a; --panel:#262222; --line:#4a403c; --text:#f1e9e4; --muted:#b5a79f; --go:#7ed08a; --stop:#ff7a5c; --accent:#e8a35c; }
-  * { box-sizing:border-box; }
-  html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui, -apple-system, sans-serif; }
-  #app { display:flex; height:100%; }
-  #map { flex:1; background:#000; }
-  
-  /* Larger, clear, responsive sidebar */
-  #side { 
-    width: 440px; 
-    min-width: 380px; 
-    max-width: 32vw; 
-    padding: 26px; 
-    background: var(--panel); 
-    border-left: 2px solid var(--line); 
-    overflow-y: auto; 
-    box-shadow: -4px 0 24px rgba(0,0,0,0.4);
-  }
-  
-  h1 { font-size: 24px; margin: 0 0 8px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
-  h2 { font-size: 17px; margin: 26px 0 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
-  p { margin: 0 0 12px; line-height: 1.6; color: var(--muted); font-size: 15px; }
-  
-  .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 16px; font-weight: 500; }
-  .row span:first-child { color: var(--muted); }
-  .row span:last-child { font-weight: 700; color: #fff; }
-  
-  #status { 
-    margin-top: 18px; 
-    padding: 16px; 
-    font-size: 19px; 
-    font-weight: 700; 
-    border: 2px solid var(--go); 
-    color: var(--go); 
-    border-radius: 8px;
-    background: rgba(126, 208, 138, 0.08);
-  }
-  #status.bad { 
-    border-color: var(--stop); 
-    color: var(--stop); 
-    background: rgba(255, 122, 92, 0.08);
-  }
-  
-  #stops { padding-left: 22px; margin: 0; font-size: 15px; line-height: 1.7; color: var(--text); }
-  #stops li { margin-bottom: 8px; }
-  #stops li::marker { color: var(--accent); font-weight: bold; }
-  
-  #warn { margin-top: 14px; font-size: 14px; color: var(--stop); font-weight: 500; }
-  
-  #coords { 
-    margin-top: 14px; 
-    padding: 12px 14px; 
-    border: 1px dashed var(--line); 
-    border-radius: 6px; 
-    font-size: 14px; 
-    color: #e0f2fe; 
-    background: rgba(0,0,0,0.3);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; 
-  }
-  
-  .popup img { max-width: 240px; display: block; margin-top: 8px; border-radius: 4px; }
-  
-  /* Make Leaflet layer switcher and zoom controls large & readable */
-  .leaflet-control-layers {
-    font-size: 14px !important;
-    padding: 12px 16px !important;
-    background: rgba(38, 34, 34, 0.95) !important;
-    color: #f1e9e4 !important;
-    border: 1px solid var(--line) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
-    backdrop-filter: blur(8px);
-    line-height: 1.8 !important;
-  }
-  .leaflet-control-layers-base label,
-  .leaflet-control-layers-overlays label {
-    margin: 4px 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    cursor: pointer;
-  }
-  .leaflet-control-layers input {
-    margin-right: 10px !important;
-    transform: scale(1.3);
-    cursor: pointer;
-  }
-  .leaflet-control-zoom {
-    transform: scale(1.2);
-    transform-origin: top left;
-    margin: 16px !important;
-  }
-
-  @media (max-width: 860px) { 
-    #app { flex-direction: column; } 
-    #side { width: 100%; max-width: 100%; max-height: 50%; border-left: 0; border-top: 2px solid var(--line); } 
-  }
-</style>
+<title>Martian Map — EVA Planner</title>
+<meta name="description" content="Plan a safe Marswalk across Sakarya Vallis, Gale Crater, using HiRISE terrain, Curiosity weather and radiation data.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="./vendor/leaflet/leaflet.min.css">
+<link rel="stylesheet" href="./src/ui/app.css">
 </head>
 <body>
-<div id="app">
-  <div id="map"></div>
-  <aside id="side">
-    <h1 id="title"></h1>
-    <p id="goal"></p>
-    <div id="status"></div>
-    <div id="warn"></div>
-    <h2>Route</h2>
-    <div class="row"><span>Distance (round trip)</span><span id="dist"></span></div>
-    <div class="row"><span>Walking time</span><span id="time"></span></div>
-    <div class="row"><span>Assumed speed</span><span id="speed"></span></div>
-    <h2>Science stops</h2>
-    <ol id="stops"></ol>
-    <h2>Terrain & Elevation Query</h2>
-    <p>Click anywhere on the map to query coordinates and sample elevation.</p>
-    <div id="coords">No click yet</div>
-    <div id="elevation-info" style="margin-top: 8px; font-size: 13px; color: var(--muted); line-height: 1.5; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 4px; border-left: 3px solid var(--accent);">
-      Click map to sample elevation and verify DTM footprint coverage.
+<a class="skip-link" href="#panel">Skip to mission panel</a>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-name">Martian Map</span>
+    <span class="brand-site" id="site-name">Sakarya Vallis · Gale Crater</span>
+  </div>
+  <div class="topbar-actions">
+    <span id="net-status" class="net" hidden>Offline</span>
+    <button type="button" class="btn btn-ghost" id="btn-briefing">Briefing</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="map-col" aria-label="Map and elevation profile">
+    <div id="map" role="application" aria-label="Traverse map. Drag numbered markers to move stops."></div>
+    <div id="map-notice" class="map-notice" hidden></div>
+    <div id="add-hint" class="add-hint" hidden>Click the map to place a stop · <kbd>Esc</kbd> to cancel</div>
+    <div id="dust-overlay" class="dust-overlay" aria-hidden="true"></div>
+
+    <section class="profile" aria-labelledby="profile-title">
+      <div class="profile-head">
+        <h2 id="profile-title">Elevation along route</h2>
+        <ul class="legend" aria-label="Slope colours">
+          <li><span class="sw sw-nominal"></span>&lt;10°</li>
+          <li><span class="sw sw-moderate"></span>10–15°</li>
+          <li><span class="sw sw-steep"></span>15–20°</li>
+          <li><span class="sw sw-impassable"></span>&gt;20° no-go</li>
+        </ul>
+      </div>
+      <div class="profile-canvas-wrap">
+        <canvas id="profile-canvas" aria-label="Elevation profile chart"></canvas>
+        <div id="profile-tip" class="profile-tip" hidden></div>
+      </div>
+    </section>
+  </section>
+
+  <aside id="panel" class="panel" tabindex="-1" aria-label="Mission panel">
+    <div class="tabs" role="tablist" aria-label="Panel sections">
+      <button type="button" role="tab" id="tab-plan" aria-controls="view-plan" aria-selected="true">Plan</button>
+      <button type="button" role="tab" id="tab-stop" aria-controls="view-stop" aria-selected="false" tabindex="-1">Stop</button>
+      <button type="button" role="tab" id="tab-env" aria-controls="view-env" aria-selected="false" tabindex="-1">Environment</button>
+      <button type="button" role="tab" id="tab-layers" aria-controls="view-layers" aria-selected="false" tabindex="-1">Layers</button>
     </div>
 
-    <h2>Resources used</h2>
-    <p style="font-size: 13px; line-height: 1.6; color: var(--muted);">
-      &bull; <b>HiRISE DTM (1.01 m):</b> DTEEC_006855_1750_007501_1750_A01 (Univ. of Arizona / NASA JPL), Sakarya Vallis chasm in interior mound<br>
-      &bull; <b>JPL Mars Trek:</b> MOLA elevation (463 m), Viking color mosaic (232 m), THEMIS day IR (100 m)<br>
-      &bull; <b>USGS Astrogeology:</b> MRO CTX mosaic (5 m) and the USGS-NASA geologic map of Mars (global, 1:20,000,000, regional context only)<br>
-      &bull; <b>NASA Curiosity route map:</b> used to compare our targets with regions NASA scientists labelled on lower Mount Sharp<br>
-      &bull; <b>Perseverance raw images:</b> example ground-level views (Jezero Crater, not Gale), captioned per stop<br>
-      &bull; <b>NASA Worldview:</b> interface inspiration only (layer toggles, time controls). It holds Earth data.
-    </p>
+    <!-- PLAN -->
+    <div class="view" role="tabpanel" id="view-plan" aria-labelledby="tab-plan">
+      <section id="status-card" class="poll" aria-label="Go / no-go poll">
+        <div id="verdict" class="verdict" role="status" aria-live="polite">
+          <p class="verdict-call">Loading terrain…</p>
+        </div>
+        <ol id="poll" class="poll-list"></ol>
+      </section>
+
+      <dl class="stats">
+        <div><dt>Distance</dt><dd id="stat-dist">—</dd></div>
+        <div><dt>EVA time</dt><dd id="stat-time">—</dd></div>
+        <div><dt>Total climb</dt><dd id="stat-climb">—</dd></div>
+        <div><dt>Steepest ground</dt><dd id="stat-slope">—</dd></div>
+      </dl>
+
+      <section aria-labelledby="cons-title">
+        <h3 id="cons-title" class="section-title">Suit consumables at return</h3>
+        <div id="consumables" class="gauges"></div>
+        <p id="pnr-line" class="pnr"></p>
+      </section>
+
+      <section aria-labelledby="route-title">
+        <div class="section-row">
+          <h3 id="route-title" class="section-title">Route</h3>
+          <span class="note-inline" id="route-mode">Legs follow safe terrain</span>
+        </div>
+        <ol id="stops" class="stops"></ol>
+        <div class="actions">
+          <button type="button" class="btn" id="btn-add">Add stop</button>
+          <button type="button" class="btn" id="btn-reset">Reset route</button>
+        </div>
+      </section>
+
+      <section aria-labelledby="abort-title" class="abort">
+        <div class="section-row">
+          <h3 id="abort-title" class="section-title">Emergency return</h3>
+          <label class="select-wrap">
+            <span class="visually-hidden">Crew configuration</span>
+            <select id="crew-mode">
+              <option value="solo">Solo walker</option>
+              <option value="pair">Buddy pair</option>
+              <option value="rover">Pair + rover</option>
+            </select>
+          </label>
+        </div>
+        <button type="button" class="btn btn-danger btn-block" id="btn-abort" aria-pressed="false">Show abort route</button>
+        <div id="abort-info" class="abort-info" hidden></div>
+      </section>
+    </div>
+
+    <!-- STOP -->
+    <div class="view" role="tabpanel" id="view-stop" aria-labelledby="tab-stop" hidden>
+      <div class="stepper">
+        <button type="button" class="btn" id="btn-prev" aria-label="Previous stop">‹ Prev</button>
+        <span id="stop-progress" class="stepper-progress" aria-live="polite"></span>
+        <button type="button" class="btn" id="btn-next" aria-label="Next stop">Next ›</button>
+      </div>
+      <button type="button" class="btn btn-primary btn-block" id="btn-play" aria-pressed="false">Play walkthrough</button>
+
+      <article class="stop-card">
+        <p id="stop-kind" class="kicker"></p>
+        <h2 id="stop-name" class="stop-name"></h2>
+        <p id="stop-objective" class="stop-objective"></p>
+        <dl class="facts" id="stop-facts"></dl>
+        <figure class="photo">
+          <img id="stop-photo" alt="" loading="lazy">
+          <figcaption><span id="stop-photo-caption"></span> <a id="stop-photo-link" target="_blank" rel="noopener">Source</a></figcaption>
+        </figure>
+      </article>
+    </div>
+
+    <!-- ENVIRONMENT -->
+    <div class="view" role="tabpanel" id="view-env" aria-labelledby="tab-env" hidden>
+      <section aria-labelledby="wx-title">
+        <div class="section-row">
+          <h3 id="wx-title" class="section-title">Weather · Curiosity REMS</h3>
+          <label class="select-wrap">
+            <span class="visually-hidden">Sol</span>
+            <select id="sol-select"></select>
+          </label>
+        </div>
+        <dl class="facts" id="wx-facts"></dl>
+        <p class="note" id="wx-source"></p>
+        <p class="note" id="wx-effect"></p>
+      </section>
+
+      <section aria-labelledby="dust-title">
+        <h3 id="dust-title" class="section-title">Dust · what-if</h3>
+        <div class="dust-row">
+          <label for="dust-slider" class="dust-label">Optical depth τ <output id="dust-value" for="dust-slider">0.60</output></label>
+          <input type="range" id="dust-slider" min="0.3" max="2.6" step="0.05" value="0.6">
+        </div>
+        <div class="seg" role="group" aria-label="Dust presets">
+          <button type="button" class="btn" data-tau="0.4">Clear</button>
+          <button type="button" class="btn" data-tau="0.95">Haze</button>
+          <button type="button" class="btn" data-tau="2.2">Storm</button>
+        </div>
+        <p class="note" id="dust-effect"></p>
+      </section>
+
+      <section aria-labelledby="rad-title">
+        <h3 id="rad-title" class="section-title">Radiation · Curiosity RAD</h3>
+        <dl class="facts" id="rad-facts"></dl>
+      </section>
+
+      <section aria-labelledby="sw-title">
+        <h3 id="sw-title" class="section-title">Space weather · NASA DONKI</h3>
+        <p id="sw-text" class="note">Checking…</p>
+        <form id="nasa-key-form" class="key-form">
+          <label for="nasa-key" class="note">Your own NASA API key, optional (free at <a href="https://api.nasa.gov/" target="_blank" rel="noopener">api.nasa.gov</a>; stays in this browser)</label>
+          <div class="key-row">
+            <input id="nasa-key" type="password" autocomplete="off" spellcheck="false" placeholder="Using the app’s shared key">
+            <button type="submit" class="btn">Save &amp; check</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <!-- LAYERS -->
+    <div class="view" role="tabpanel" id="view-layers" aria-labelledby="tab-layers" hidden>
+      <section aria-labelledby="ov-title">
+        <h3 id="ov-title" class="section-title">Site data (works offline)</h3>
+        <div id="overlay-list" class="layer-list"></div>
+      </section>
+      <section aria-labelledby="bm-title">
+        <h3 id="bm-title" class="section-title">Orbital basemaps (online)</h3>
+        <div id="basemap-list" class="layer-list"></div>
+        <p id="tile-status" class="note"></p>
+      </section>
+      <section aria-labelledby="src-title">
+        <h3 id="src-title" class="section-title">Data sources</h3>
+        <ul id="sources" class="sources"></ul>
+      </section>
+    </div>
   </aside>
+</main>
+
+<div id="briefing" class="modal" role="dialog" aria-modal="true" aria-labelledby="briefing-title" hidden>
+  <div class="modal-card">
+    <p class="kicker">Mission briefing</p>
+    <h2 id="briefing-title">Marswalk: Sakarya Vallis</h2>
+    <p id="briefing-goal"></p>
+    <ul class="brief-list">
+      <li><strong>Terrain is real.</strong> Elevation and slope come from a HiRISE stereo model (10 m grid). Legs automatically route around ground steeper than 20° and steer clear of boulder fields seen in the 1 m model.</li>
+      <li><strong>Edit the route.</strong> Drag numbered markers or use <em>Add stop</em>. Status, consumables and return times update instantly.</li>
+      <li><strong>Check conditions.</strong> Pick a Curiosity weather sol and try dust levels under <em>Environment</em>.</li>
+    </ul>
+    <p class="note">Planning aid for a hackathon. Suit capacities and some effects are stated assumptions — see README.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="btn-start">Start planning</button>
+    </div>
+  </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script>
-/* ============================================================
-   DATA SECTION — edit everything here.
-   Coordinates are [latitude, longitude].
-   Set to Gale Crater / Mount Sharp (Curiosity boxwork site).
-   ============================================================ */
-var SITE = {
-  title: "Mount Sharp Boxwork — Marswalk",
-  goal: "Walk from base camp to three candidate science targets on visible bedrock near Mount Sharp, avoiding estimated rough and sandy terrain, and return within one EVA.",
-  center: [-5.06, 137.46],        // centered directly on the route stops
-  zoom: 12,                       // zoomed in directly on the Marswalk traverse
-  walkSpeedKmh: 2                // suited EVA pace on Mars
-};
+<div id="debrief" class="modal" role="dialog" aria-modal="true" aria-labelledby="debrief-title" hidden>
+  <div class="modal-card">
+    <p class="kicker">Walkthrough complete</p>
+    <h2 id="debrief-title">Back at base camp</h2>
+    <dl class="facts" id="debrief-facts"></dl>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="btn-debrief-close">Continue planning</button>
+    </div>
+  </div>
+</div>
 
-/* Route: start, then each stop in order.
-   Walk back to start is added automatically.
-   All stops stay strictly on continuous visible grey CTX ground (south of black swath). */
-var ROUTE = [
-  {
-    name: "Start: base camp",
-    pos:  [-5.0800, 137.4500]
-  },
-  {
-    name: "Stop 1 — Candidate science target 1 (boulder field)",
-    pos:  [-5.0740, 137.4650],
-    note: "Dark boulder accumulation on visible bedrock. " +
-          "Visual survey and surface texture inspection.",
-    photo: "https://images-assets.nasa.gov/image/PIA26365/PIA26365~thumb.jpg",
-    credit: "Curiosity Navcam/Mastcam (NASA/JPL-Caltech). Boulder debris field on Mount Sharp."
-  },
-  {
-    name: "Stop 2 — Candidate science target 2 (ridge outcrop)",
-    pos:  [-5.0660, 137.4690],
-    note: "Linear ridge outcrop visible on CTX imagery. " +
-          "Contact spectroscopy to assess fracture fill and mineral veins.",
-    photo: "https://images-assets.nasa.gov/image/PIA26366/PIA26366~thumb.jpg",
-    credit: "Curiosity Mastcam (NASA/JPL-Caltech). Polygonal fracture ridge outcrop."
-  },
-  {
-    name: "Stop 3 — Candidate science target 3 (layered outcrop)",
-    pos:  [-5.0600, 137.4580],
-    note: "Stratigraphic contact between layered ground and surrounding plains. " +
-          "Multispectral imaging and in-situ composition check.",
-    photo: "https://images-assets.nasa.gov/image/PIA25428/PIA25428~thumb.jpg",
-    credit: "Curiosity ChemCam/Mastcam (NASA/JPL-Caltech). Layered sulfate-bearing unit."
-  }
-];
-
-/* Danger zones — polygons of [lat, lng] corners.
-   Positioned over visible knobbly/rough ground entirely south of the black swath. */
-var HAZARDS = [
-  {
-    name: "Rough terrain (estimated from CTX imagery)",
-    points: [
-      [-5.072, 137.454],
-      [-5.068, 137.461],
-      [-5.064, 137.457],
-      [-5.068, 137.450]
-    ]
-  },
-  {
-    name: "Sand ripple field (potential sinkage, identified from CTX imagery by eye)",
-    points: [
-      [-5.085, 137.465],
-      [-5.080, 137.475],
-      [-5.075, 137.472],
-      [-5.080, 137.462]
-    ]
-  }
-];
-
-/* Mars layers from NASA Trek & USGS/ArcGIS Astrogeology */
-var LAYERS = {
-  "Elevation — MOLA colour (463 m)": {
-    url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
-    maxNative: 7
-  },
-  "Visible — Viking Color Mosaic (232 m)": {
-    url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
-    maxNative: 7
-  },
-  "Imagery — CTX visible (5 m)": {
-    url: "https://astro.arcgis.com/arcgis/rest/services/OnMars/CTX/MapServer/tile/{z}/{y}/{x}",
-    maxNative: 12
-  },
-  "Thermal — THEMIS Day IR (100 m)": {
-    url: "https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png",
-    maxNative: 9
-  }
-};
-
-/* ============================================================
-   CODE SECTION — no need to edit below this line.
-   ============================================================ */
-var map = L.map("map", {
-  crs: L.CRS.EPSG4326,
-  center: SITE.center,
-  zoom: SITE.zoom,
-  minZoom: 1,
-  maxZoom: 14
-});
-
-/* Build base layers from LAYERS config */
-var overlays = {};
-var failed = {};
-var firstLayer = true;
-Object.keys(LAYERS).forEach(function(label) {
-  var cfg = LAYERS[label];
-  var layer = L.tileLayer(cfg.url, {
-    tileSize: 256,
-    bounds: [[-90, -180], [90, 180]],
-    maxNativeZoom: cfg.maxNative,
-    maxZoom: 14,
-    noWrap: true,
-    attribution: '<a href="https://trek.nasa.gov/mars" target="_blank">NASA / USGS / Mars Trek</a>'
-  });
-  layer.on("tileerror", function() { failed[label] = true; showWarn(); });
-  overlays[label] = layer;
-  if (firstLayer) { layer.addTo(map); firstLayer = false; }
-});
-
-/* Danger zone polygons */
-var hazardGroup = L.layerGroup();
-HAZARDS.forEach(function(h) {
-  L.polygon(h.points, {
-    color: "#ff7a5c", weight: 2, fillOpacity: 0.35
-  }).bindPopup("<b>⚠️ Hazard:</b> " + h.name).addTo(hazardGroup);
-});
-hazardGroup.addTo(map);
-
-/* Route polyline + markers */
-var routeGroup = L.layerGroup();
-var path = ROUTE.map(function(p) { return p.pos; });
-var loop = path.concat([path[0]]);
-L.polyline(loop, { color: "#7ed08a", weight: 3, dashArray: "8 6" }).addTo(routeGroup);
-ROUTE.forEach(function(p, i) {
-  var html = "<b>" + p.name + "</b>" + (p.note ? "<br>" + p.note : "");
-  if (p.photo) html += '<div class="popup"><img src="' + p.photo + '" alt="' + p.name + '"><div style="font-size:11px;color:#b5a79f;margin-top:4px;">' + (p.credit || "Surface image: NASA/JPL-Caltech Curiosity Archive") + '</div></div>';
-  L.circleMarker(p.pos, {
-    radius: i === 0 ? 9 : 7,
-    color: "#fff", weight: 2,
-    fillColor: i === 0 ? "#e8a35c" : "#7ed08a",
-    fillOpacity: 1
-  }).bindPopup(html).addTo(routeGroup);
-});
-routeGroup.addTo(map);
-
-/* USGS-NASA geologic map of Mars (global, 1:20,000,000). EXPERIMENTAL: untested service.
-   If it does not load, use the manual screenshot method and note the unit names in ROUTE. */
-var geoGroup = L.layerGroup();
-var geoLoaded = false;
-function loadGeology() {
-  if (geoLoaded) return;
-  geoLoaded = true;
-  var url = "https://services.arcgis.com/nzS0F0zdNLvs7nc8/ArcGIS/rest/services/Mars_Geology_feature_layer/FeatureServer/0/query" +
-    "?where=1%3D1&geometry=136.5,-6,138.5,-4&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&outFields=*&f=geojson";
-  fetch(url).then(function(r){ return r.json(); }).then(function(g){
-    if (!g.features || !g.features.length) throw new Error("no features");
-    L.geoJSON(g, {
-      style: { color: "#e8a35c", weight: 1, fillOpacity: 0.12 },
-      onEachFeature: function(f, l) {
-        var rows = Object.keys(f.properties || {}).map(function(k){ return k + ": " + f.properties[k]; }).join("<br>");
-        l.bindPopup("<b>USGS geologic unit</b><br>" + rows);
-      }
-    }).addTo(geoGroup);
-  }).catch(function(){
-    document.getElementById("warn").textContent =
-      "Geologic layer could not load. Use the USGS geologic map website instead and note the unit names in ROUTE.";
-  });
-}
-map.on("overlayadd", function(e){ if (e.layer === geoGroup) loadGeology(); });
-
-/* Verified HiRISE DTM Footprint (DTEEC_006855_1750_007501_1750_A01)
-   Sakarya Vallis Chasm in Gale Crater Interior Mound. 1.01 m/pixel posting. */
-var DTM_BOUNDS = {
-  south: -5.221725,
-  north: -4.950398,
-  west: 137.171577,
-  east: 137.289506,
-  centerLat: -5.09,
-  centerLon: 137.23,
-  minElev: -4043.75,
-  maxElev: -2415.92,
-  productId: "DTEEC_006855_1750_007501_1750_A01"
-};
-
-var dtmGroup = L.layerGroup();
-var dtmRect = L.rectangle([[DTM_BOUNDS.south, DTM_BOUNDS.west], [DTM_BOUNDS.north, DTM_BOUNDS.east]], {
-  color: "#4ecdc4",
-  weight: 2,
-  dashArray: "6 4",
-  fillColor: "#4ecdc4",
-  fillOpacity: 0.12
-});
-dtmRect.bindPopup(
-  "<b>Verified HiRISE DTM Footprint</b><br>" +
-  "<b>Product ID:</b> " + DTM_BOUNDS.productId + "<br>" +
-  "<b>Feature:</b> Sakarya Vallis Chasm in Gale Crater Interior Mound<br>" +
-  "<b>Resolution:</b> 1.01 m/pixel posting (0.25 m ortho)<br>" +
-  "<b>Vertical Datum:</b> MOLA Areoid (Mars 2000 Datum)<br>" +
-  "<b>Elevation Range:</b> -4043.8 m to -2415.9 m<br>" +
-  "<b>Footprint Extent:</b> 16.1 km (N-S) &times; 7.0 km (E-W)<br>" +
-  "<b>Note:</b> Located ~15.4 km west of candidate Mount Sharp boxwork site. Used as verified terrain pipeline testbed."
-);
-dtmRect.addTo(dtmGroup);
-dtmGroup.addTo(map);
-
-/* Layer control */
-L.control.layers(overlays, {
-  "🟦 Verified HiRISE DTM (1m)": dtmGroup,
-  "⚠️ Danger zones": hazardGroup,
-  "🟢 Route": routeGroup,
-  "Geologic units (USGS, regional)": geoGroup
-}, { collapsed: false }).addTo(map);
-
-/* Haversine distance using Mars radius (3389.5 km) */
-function distKm(a, b) {
-  var R = 3389.5, r = Math.PI / 180;
-  var dLat = (b[0] - a[0]) * r, dLng = (b[1] - a[1]) * r;
-  var h = Math.sin(dLat/2)*Math.sin(dLat/2) +
-          Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dLng/2)*Math.sin(dLng/2);
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-/* Rough point-in-polygon test */
-function insidePoly(pt, poly) {
-  var inside = false;
-  for (var i = 0, j = poly.length-1; i < poly.length; j = i++) {
-    var yi=poly[i][0], xi=poly[i][1], yj=poly[j][0], xj=poly[j][1];
-    if ((yi>pt[0]) !== (yj>pt[0]) && pt[1] < (xj-xi)*(pt[0]-yi)/(yj-yi)+xi)
-      inside = !inside;
-  }
-  return inside;
-}
-function segmentHitsHazard(a, b, poly) {
-  for (var t=0; t<=1; t+=0.02) {
-    var pt = [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
-    if (insidePoly(pt, poly)) return true;
-  }
-  return false;
-}
-
-/* Compute totals */
-var total = 0, hits = [];
-for (var i = 0; i < loop.length-1; i++) {
-  total += distKm(loop[i], loop[i+1]);
-  HAZARDS.forEach(function(h) {
-    if (segmentHitsHazard(loop[i], loop[i+1], h.points) && hits.indexOf(h.name) < 0)
-      hits.push(h.name);
-  });
-}
-
-/* Fill sidebar */
-document.getElementById("title").textContent = SITE.title;
-document.getElementById("goal").textContent   = SITE.goal;
-document.getElementById("dist").textContent   = total.toFixed(2) + " km";
-document.getElementById("speed").textContent  = SITE.walkSpeedKmh + " km/h";
-var mins = total / SITE.walkSpeedKmh * 60;
-document.getElementById("time").textContent   =
-  Math.floor(mins/60) + " h " + Math.round(mins%60) + " min";
-
-var st = document.getElementById("status");
-if (hits.length) {
-  st.className = "bad";
-  st.textContent = "NO-GO: route crosses " + hits.join(", ");
-} else {
-  st.textContent = "GO: route avoids all marked danger zones";
-}
-
-var ol = document.getElementById("stops");
-ROUTE.slice(1).forEach(function(p) {
-  var li = document.createElement("li");
-  li.textContent = p.name + (p.note ? " — " + p.note : "");
-  ol.appendChild(li);
-});
-
-function showWarn() {
-  var names = Object.keys(failed);
-  document.getElementById("warn").textContent =
-    "Some tiles failed for: " + names.join(", ") +
-    ". Check layer name and max zoom, or zoom out.";
-}
-
-/* Click to query coordinates and elevation */
-map.on("click", function(e) {
-  var lat = e.latlng.lat;
-  var lng = e.latlng.lng;
-  document.getElementById("coords").textContent =
-    "[" + lat.toFixed(5) + "°, " + lng.toFixed(5) + "°]";
-
-  var elevDiv = document.getElementById("elevation-info");
-  var inDtm = (lat >= DTM_BOUNDS.south && lat <= DTM_BOUNDS.north &&
-               lng >= DTM_BOUNDS.west && lng <= DTM_BOUNDS.east);
-
-  if (inDtm) {
-    // Inside high-resolution HiRISE DTM footprint
-    elevDiv.innerHTML =
-      '<b style="color:#4ecdc4;">[VERIFIED HiRISE DTM COVERAGE]</b><br>' +
-      '<b>Dataset:</b> ' + DTM_BOUNDS.productId + ' (1.01 m/pixel posting)<br>' +
-      '<b>Vertical Datum:</b> MOLA Areoid Gravitational Datum<br>' +
-      '<b>Location:</b> Sakarya Vallis chasm (~15.4 km west of boxwork traverse)<br>' +
-      '<b>Elevation Range:</b> ' + DTM_BOUNDS.minElev.toFixed(1) + ' m to ' + DTM_BOUNDS.maxElev.toFixed(1) + ' m<br>' +
-      '<span style="color:#7ed08a;">✓ Full stereo elevation and slope analysis valid here.</span>';
-  } else {
-    // Outside high-resolution DTM footprint (Regional MOLA baseline)
-    elevDiv.innerHTML =
-      '<b style="color:#e8a35c;">[REGIONAL MOLA BASELINE ~463 m/px]</b><br>' +
-      '<b>Notice:</b> Coordinate falls outside the high-resolution HiRISE DTM footprint.<br>' +
-      '<b>Context:</b> Mount Sharp exploration candidate area. Macro-topography derived from MOLA MEGDR grid.<br>' +
-      '<span style="color:#ff7a5c;">⚠️ Micro-relief and hazards &lt;460 m are not resolved.</span>';
-  }
-});
-</script>
+<script src="./vendor/leaflet/leaflet.min.js"></script>
+<script type="module" src="./src/app.js"></script>
 </body>
 </html>

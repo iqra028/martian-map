@@ -419,3 +419,24 @@ export function loadDtmRaster(source) {
  * @property {string} [quality] - Optional quality note
  * @property {string} [error] - Error explanation if invalid
  */
+
+/**
+ * Decodes a compact binary elevation grid (see tools/build-terrain.mjs) into metres.
+ * No-data cells become NaN, which DtmRaster.isValidElevation rejects.
+ *
+ * @param {{type:'int16-le', scale:number, offset:number, noData:number}} encoding
+ * @param {ArrayBuffer} buffer
+ * @returns {Float32Array}
+ */
+export function decodeElevationGrid(encoding, buffer) {
+  if (!encoding || encoding.type !== 'int16-le') {
+    throw new Error(`Unsupported DTM encoding: ${encoding && encoding.type}`);
+  }
+  const view = new DataView(buffer);
+  const out = new Float32Array(buffer.byteLength / 2);
+  for (let i = 0; i < out.length; i++) {
+    const v = view.getInt16(i * 2, true);
+    out[i] = v === encoding.noData ? NaN : v * encoding.scale + encoding.offset;
+  }
+  return out;
+}

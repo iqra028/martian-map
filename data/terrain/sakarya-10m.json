@@ -1,0 +1,56 @@
+{
+ "id": "DTEEC_006855_1750_007501_1750_A01_10M",
+ "source": {
+  "name": "HiRISE DTM — Chasm in Gale Crater's Interior Mound (Sakarya Vallis)",
+  "productId": "DTEEC_006855_1750_007501_1750_A01",
+  "stereoPair": [
+   "PSP_006855_1750",
+   "PSP_007501_1750"
+  ],
+  "institution": "University of Arizona LPL / NASA JPL (MRO HiRISE)",
+  "url": "https://www.uahirise.org/dtm/dtm.php?ID=PSP_006855_1750",
+  "processing": "Block-averaged 10×10 from 1 m PDS DTM by tools/build-terrain.mjs"
+ },
+ "metadata": {
+  "lines": 1590,
+  "samples": 689,
+  "resolutionX": 10.116912775905,
+  "resolutionY": 10.116912775905,
+  "units": "meters",
+  "verticalReference": "MOLA Areoid (Mars 2000 Datum)",
+  "noDataValue": -32768,
+  "validMinimum": -4043.75,
+  "validMaximum": -2415.92
+ },
+ "projection": {
+  "centerLatitudeDegrees": -5,
+  "centerLongitudeDegrees": 137.23,
+  "mapResolutionPixPerDeg": 5858.706624417,
+  "lineProjectionOffset": -29003.450000001,
+  "sampleProjectionOffset": 340.45000000001
+ },
+ "bounds": {
+  "south": -5.2217247582496,
+  "north": -4.9503982410223,
+  "west": 137.17157717,
+  "east": 137.28950561
+ },
+ "elevation": {
+  "min": -4042.89208984375,
+  "max": -2416.621826171875
+ },
+ "encoding": {
+  "type": "int16-le",
+  "file": "sakarya-10m.bin",
+  "scale": 0.1,
+  "offset": -4100,
+  "noData": -32768
+ },
+ "roughness": {
+  "type": "uint8",
+  "file": "sakarya-10m-rough.bin",
+  "scale": 0.1,
+  "offset": 0,
+  "noData": 255
+ }
+}
