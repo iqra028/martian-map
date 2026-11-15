@@ -29,7 +29,8 @@ reasons — from terrain, suit consumables, point of no return, weather, dust an
 ### UI principles
 Built for someone glancing at it in a suit: one status at the top, big tabular numbers, four tabs
 (Plan · Stop · Environment · Layers) instead of one long page, 44 px touch targets, colour always paired with
-text and shape (● GO, ▲ CAUTION, ■ NO-GO), dark high-contrast theme, full keyboard use (arrow keys on tabs,
+text and shape (● GO, ▲ CAUTION, ■ NO-GO), a quiet document-style dark theme (Notion-like neutral greys,
+tinted callouts, property rows), full keyboard use (arrow keys on tabs,
 Esc closes dialogs / cancels add mode), and an elevation profile you can scrub that tracks a marker on the map.
 
 ---

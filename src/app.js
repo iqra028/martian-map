@@ -17,7 +17,8 @@ import { REMS_FEED, parseRems } from './data/rems.js';
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const clone = (route) => route.map((w) => ({ ...w, pos: [...w.pos] }));
-const LEVEL_TEXT = { go: 'GO', caution: 'CAUTION', nogo: 'NO-GO' };
+const LEVEL_TEXT = { go: 'Go', caution: 'Caution', nogo: 'No-go' };
+const CALLOUT_TEXT = { go: 'Go for EVA', caution: 'Caution — review before egress', nogo: 'No-go — do not egress' };
 const PNR_LEVEL = { NOMINAL: 'go', CAUTION: 'caution', CRITICAL_ABORT: 'nogo' };
 const SLOPE_COLOR = Object.fromEntries(SLOPE_CLASSES.map((c) => [c.id, c.color]));
 const CREW = {
@@ -28,7 +29,7 @@ const CREW = {
 
 function fmtH(h) {
   const m = Math.round(h * 60);
-  return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} m`;
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} m`;
 }
 // Mission elapsed time since egress, e.g. T+1:43
 function met(h) {
@@ -228,7 +229,7 @@ function renderStatus() {
   $('status-pill-sub').textContent = reasons.length ? `${reasons.length} issue${reasons.length > 1 ? 's' : ''}` : 'All nominal';
   const card = $('status-card');
   card.dataset.level = level;
-  $('status-title').textContent = LEVEL_TEXT[level];
+  $('status-title').textContent = CALLOUT_TEXT[level];
   $('status-reasons').innerHTML = reasons.length
     ? reasons.map((r) => `<li data-level="${r.level}">${esc(r.text)}</li>`).join('')
     : '<li>All checks nominal</li>';
