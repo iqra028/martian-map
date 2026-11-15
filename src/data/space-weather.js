@@ -34,20 +34,25 @@ export function classifySpaceWeather(events, asOf = new Date()) {
  * classified locally. Resolves to {events} or {error} with a reason a person can act on.
  */
 export async function fetchSepEvents(from, to, apiKey = 'DEMO_KEY') {
-  const start = new Date(from.getTime() - LOOKBACK_DAYS * 864e5);
-  const url = `${DONKI_SEP}?startDate=${day(start)}&endDate=${day(to)}&api_key=${encodeURIComponent(apiKey)}`;
+  const events = [];
   try {
-    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (resp.status === 429) {
-      return { error: apiKey === 'DEMO_KEY'
-        ? 'NASA’s shared demo key is used up (10 checks an hour). Add your own free key below.'
-        : 'Your NASA API key is over its hourly limit. Try again later.' };
+    // DONKI refuses ranges over 60 days, so walk the span in 60-day windows
+    for (let s = from.getTime() - LOOKBACK_DAYS * 864e5; s <= to.getTime(); s += 60 * 864e5) {
+      const e = new Date(Math.min(s + 59 * 864e5, to.getTime()));
+      const url = `${DONKI_SEP}?startDate=${day(new Date(s))}&endDate=${day(e)}&api_key=${encodeURIComponent(apiKey)}`;
+      const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (resp.status === 429) {
+        return { error: apiKey === 'DEMO_KEY'
+          ? 'NASA’s shared demo key is used up (10 checks an hour). Add your own free key below.'
+          : 'Your NASA API key is over its hourly limit. Try again later.' };
+      }
+      if (resp.status === 403) return { error: 'NASA rejected the API key. Check it below.' };
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      // DONKI returns an empty body (not []) when there are no events
+      const text = await resp.text();
+      if (text.trim()) events.push(...JSON.parse(text));
     }
-    if (resp.status === 403) return { error: 'NASA rejected the API key. Check it below.' };
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    // DONKI returns an empty body (not []) when there are no events
-    const text = await resp.text();
-    return { events: text.trim() ? JSON.parse(text) : [], checkedAt: new Date().toISOString() };
+    return { events, checkedAt: new Date().toISOString() };
   } catch {
     return { error: navigator?.onLine === false ? 'Offline: connect to check DONKI.' : 'NASA DONKI did not respond.' };
   }

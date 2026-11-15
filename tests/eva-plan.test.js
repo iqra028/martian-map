@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { ElevationService } from '../src/data/elevation-service.js';
 import { profileRoute, findSafePath } from '../src/data/terrain-analysis.js';
 import { heaterPowerWatts, dustClass, environmentFor, planEva, evaluateGoNoGo } from '../src/core/eva-plan.js';
-import { classifySpaceWeather } from '../src/data/space-weather.js';
+import { classifySpaceWeather, fetchSepEvents } from '../src/data/space-weather.js';
 import { DEFAULT_ROUTE } from '../src/config/mission.js';
 
 test('heater model: off at -20 °C and warmer, 1.5 W/°C below, capped at 120 W', () => {
@@ -80,4 +80,18 @@ test('space weather: recent SEP event → caution, old event → go', () => {
   assert.equal(classifySpaceWeather([], now).status, 'go');
   // a sol before the event was clear at the time
   assert.equal(classifySpaceWeather([{ eventTime: '2026-11-12T10:00Z' }], new Date('2026-11-10T23:59:59Z')).status, 'go');
+});
+
+test('space weather fetch splits long spans into DONKI-sized (≤60 day) windows', async (t) => {
+  const ranges = [];
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    const q = new URL(url).searchParams;
+    ranges.push([q.get('startDate'), q.get('endDate')]);
+    return new Response(ranges.length === 2 ? '[{"eventTime":"2026-10-01T00:00Z"}]' : '');
+  });
+  const res = await fetchSepEvents(new Date('2026-07-26T00:00Z'), new Date('2026-11-15T00:00Z'), 'k');
+  assert.equal(res.events.length, 1);
+  assert.equal(ranges[0][0], '2026-07-19');
+  assert.equal(ranges.at(-1)[1], '2026-11-15');
+  for (const [s, e] of ranges) assert.ok((Date.parse(e) - Date.parse(s)) / 864e5 < 60);
 });
