@@ -1,0 +1,27 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode/
+.idea/
+
+# Scratch & logs
+scratch/
+*.log
+
+# Large scientific data files & downloads
+data/raw/
+data/processed/
+*.IMG
+*.img
+*.JP2
+*.jp2
+*.tif
+*.tiff
+*.geotiff
+*.tar.gz
+*.zip
+
+# Node
+node_modules/

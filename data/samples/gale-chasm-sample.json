@@ -1,0 +1,57 @@
+{
+  "id": "DTEEC_006855_1750_007501_1750_SAMPLE",
+  "source": {
+    "name": "HiRISE DTM Gale Crater Chasm Sample Sector",
+    "productId": "DTEEC_006855_1750_007501_1750_A01",
+    "stereoPair": ["PSP_006855_1750", "PSP_007501_1750"],
+    "institution": "University of Arizona / NASA JPL",
+    "target": "Mars",
+    "targetFeature": "Chasm in Gale Crater's Interior Mound (Sakarya Vallis)",
+    "url": "https://www.uahirise.org/dtm/dtm.php?ID=PSP_006855_1750"
+  },
+  "metadata": {
+    "lines": 10,
+    "samples": 10,
+    "width": 10,
+    "height": 10,
+    "resolutionX": 1.01169,
+    "resolutionY": 1.01169,
+    "mapResolutionPixPerDeg": 58587.066,
+    "projectionType": "EQUIRECTANGULAR",
+    "horizontalCrs": "IAU_2000:Mars / Planetocentric",
+    "positiveLongitudeDirection": "EAST",
+    "verticalReference": "MOLA Areoid (Mars 2000 Datum)",
+    "units": "meters",
+    "noDataValue": -3.4028226550889045e+38,
+    "validMinimum": -4043.75,
+    "validMaximum": -2415.92
+  },
+  "bounds": {
+    "west": 137.225,
+    "east": 137.235,
+    "south": -5.095,
+    "north": -5.085
+  },
+  "projection": {
+    "centerLatitude": -5.0,
+    "centerLongitude": 137.23,
+    "lineProjectionOffset": -290029.5,
+    "sampleProjectionOffset": 3409.5
+  },
+  "elevation": {
+    "min": -3480.5,
+    "max": -3412.0
+  },
+  "data": [
+    -3480.5, -3475.2, -3470.1, -3465.0, -3460.2, -3455.5, -3450.0, -3445.2, -3440.0, -3435.1,
+    -3478.0, -3473.0, -3468.2, -3463.1, -3458.0, -3453.2, -3448.1, -3443.0, -3438.2, -3433.0,
+    -3476.1, -3471.2, -3466.0, -3461.0, -3456.1, -3451.0, -3446.2, -3441.1, -3436.0, -3431.2,
+    -3474.0, -3469.1, -3464.2, -3459.0, -3454.2, -3449.1, -3444.0, -3439.2, -3434.1, -3429.0,
+    -3472.2, -3467.0, -3462.1, -3457.2, -3452.0, -3447.3, -3442.1, -3437.0, -3432.2, -3427.1,
+    -3470.0, -3465.1, -3460.0, -3455.1, -3450.2, -3445.0, -3440.3, -3435.1, -3430.0, -3425.2,
+    -3468.1, -3463.2, -3458.3, -3453.0, -3448.1, -3443.2, -3438.0, -3433.2, -3428.1, -3423.0,
+    -3466.0, -3461.0, -3456.1, -3451.2, -3446.0, -3441.1, -3436.2, -3431.0, -3426.3, -3421.1,
+    -3464.2, -3459.1, -3454.0, -3449.3, -3444.1, -3439.0, -3434.1, -3429.2, -3424.0, -3419.2,
+    -3462.0, -3457.2, -3452.1, -3447.0, -3442.3, -3437.1, -3432.0, -3427.1, -3422.2, -3412.0
+  ]
+}
