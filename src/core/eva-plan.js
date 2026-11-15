@@ -191,37 +191,63 @@ export function planEva(profile, returnSamples, env, opts = {}) {
 
 const RANK = { go: 0, caution: 1, nogo: 2 };
 
+/** Areas polled before egress, in the order a flight director would call them. */
+export const POLL_AREAS = [
+  { id: 'terrain', label: 'Terrain' },
+  { id: 'consumables', label: 'Consumables' },
+  { id: 'dust', label: 'Dust' },
+  { id: 'radiation', label: 'Radiation' },
+  { id: 'spaceWeather', label: 'Space weather' }
+];
+
 /**
- * Single mission call with the reasons behind it, most severe first.
+ * Single mission call with the reasons behind it, most severe first, plus a go/no-go poll:
+ * one answer per area (go / caution / nogo, or pending while a check is still running).
  *
  * @param {{routing: Array<{legIdx:number, safe:boolean}>, summary: Object, plan: ReturnType<typeof planEva>,
  *          env: ReturnType<typeof environmentFor>, spaceWeather?: {status:string, text:string}}} input
  */
 export function evaluateGoNoGo({ routing, summary, plan, env, spaceWeather }) {
   const reasons = [];
-  const push = (level, text) => reasons.push({ level, text });
+  const push = (area, level, text) => reasons.push({ area, level, text });
 
   const unrouted = routing.filter((r) => !r.safe);
-  if (unrouted.length) push('nogo', `No safe walking path for ${unrouted.length === 1 ? 'leg' : 'legs'} ${unrouted.map((r) => r.legIdx + 1).join(', ')}`);
-  if (summary.impassable.length) push('nogo', `Route crosses ${summary.impassable.length} slope${summary.impassable.length > 1 ? 's' : ''} over 20°`);
-  if (summary.noDataLegs.length) push('nogo', 'Part of the route is outside the HiRISE terrain model');
+  if (unrouted.length) push('terrain', 'nogo', `No safe walking path for ${unrouted.length === 1 ? 'leg' : 'legs'} ${unrouted.map((r) => r.legIdx + 1).join(', ')}`);
+  if (summary.impassable.length) push('terrain', 'nogo', `Route crosses ${summary.impassable.length} slope${summary.impassable.length > 1 ? 's' : ''} over 20°`);
+  if (summary.noDataLegs.length) push('terrain', 'nogo', 'Part of the route is outside the HiRISE terrain model');
 
-  if (plan.worstStop) {
-    const l = plan.worstStop.limiting;
-    if (l.status === 'CRITICAL_ABORT') push('nogo', `Past point of no return at stop ${plan.worstStop.idx} (${l.label})`);
-    else if (l.status === 'CAUTION') push('caution', `Low ${l.label.toLowerCase()} margin at stop ${plan.worstStop.idx}: ${l.marginPercent.toFixed(0)}% above reserve`);
-  }
+  const l = plan.worstStop?.limiting;
+  if (l?.status === 'CRITICAL_ABORT') push('consumables', 'nogo', `Past point of no return at stop ${plan.worstStop.idx} (${l.label})`);
+  else if (l?.status === 'CAUTION') push('consumables', 'caution', `Low ${l.label.toLowerCase()} margin at stop ${plan.worstStop.idx}: ${l.marginPercent.toFixed(0)}% above reserve`);
 
-  if (env.dust.level !== 'go') push(env.dust.level, `${env.dust.label} (τ ${env.tau.toFixed(2)})`);
-  if (summary.steep.length) push('caution', `${summary.steep.length} steep stretch${summary.steep.length > 1 ? 'es' : ''} (15–20°)`);
+  if (env.dust.level !== 'go') push('dust', env.dust.level, `${env.dust.label} (τ ${env.tau.toFixed(2)})`);
+  if (summary.steep.length) push('terrain', 'caution', `${summary.steep.length} steep stretch${summary.steep.length > 1 ? 'es' : ''} (15–20°)`);
   const rough = summary.rough || [];
   if (rough.length) {
     const worst = Math.max(...rough.map((r) => r.maxRoughM));
-    push('caution', `${rough.length} rough-ground stretch${rough.length > 1 ? 'es' : ''} (blocks up to ~${worst.toFixed(1)} m relief)`);
+    push('terrain', 'caution', `${rough.length} rough-ground stretch${rough.length > 1 ? 'es' : ''} (blocks up to ~${worst.toFixed(1)} m relief)`);
   }
-  if (spaceWeather && spaceWeather.status !== 'go') push(spaceWeather.status === 'nogo' ? 'nogo' : 'caution', spaceWeather.text);
+  if (spaceWeather && spaceWeather.status !== 'go') push('spaceWeather', spaceWeather.status === 'nogo' ? 'nogo' : 'caution', spaceWeather.text);
 
   reasons.sort((a, b) => RANK[b.level] - RANK[a.level]);
   const level = reasons.length ? reasons[0].level : 'go';
-  return { level, reasons };
+
+  // What a clear area reports, so the poll reads as evidence rather than a blank
+  const clear = {
+    terrain: 'Every leg on walkable ground under 20°',
+    consumables: l ? `${l.label} tightest: ${l.marginPercent.toFixed(0)}% above reserve` : 'Margins healthy',
+    dust: `${env.dust.label}, τ ${env.tau.toFixed(2)}`,
+    radiation: plan.doseMicroSv != null ? `${Math.round(plan.doseMicroSv)} µSv this EVA, far below limits` : 'Within limits',
+    spaceWeather: spaceWeather ? spaceWeather.text : 'Checking NASA DONKI…'
+  };
+  const poll = POLL_AREAS.map((a) => {
+    const mine = reasons.filter((r) => r.area === a.id);
+    const pending = a.id === 'spaceWeather' && !spaceWeather;
+    return {
+      ...a,
+      level: pending ? 'pending' : mine.length ? mine[0].level : 'go',
+      detail: mine.length ? mine.map((r) => r.text).join(' · ') : clear[a.id]
+    };
+  });
+  return { level, reasons, poll };
 }

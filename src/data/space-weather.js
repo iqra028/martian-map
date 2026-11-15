@@ -35,6 +35,6 @@ export async function fetchSpaceWeather(now = new Date(), apiKey = 'DEMO_KEY') {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     return { ...classifySpaceWeather(await resp.json(), now), checkedAt: now.toISOString() };
   } catch (err) {
-    return { status: 'caution', text: 'Space weather not checked (feed unavailable)', events: [], error: String(err) };
+    return { status: 'caution', text: 'Not checked: NASA DONKI feed unavailable', events: [], error: String(err) };
   }
 }

@@ -65,6 +65,12 @@ test('evaluateGoNoGo levels: clean → go, steep → caution, unrouted leg → n
   const rough = evaluateGoNoGo({ routing: [], summary: { ...summary, rough: [{ maxRoughM: 0.7 }] }, plan, env });
   assert.equal(rough.level, 'caution');
   assert.match(rough.reasons[0].text, /rough-ground.*0\.7 m/);
+
+  // Poll: one answer per area; space weather stays pending until checked
+  const poll = evaluateGoNoGo({ routing: [{ legIdx: 1, safe: false }], summary: { ...summary, steep: [{}] }, plan, env }).poll;
+  assert.deepEqual(poll.map((p) => [p.id, p.level]),
+    [['terrain', 'nogo'], ['consumables', 'go'], ['dust', 'go'], ['radiation', 'go'], ['spaceWeather', 'pending']]);
+  assert.match(poll[0].detail, /leg 2.*steep/);
 });
 
 test('space weather: recent SEP event → caution, old event → go', () => {

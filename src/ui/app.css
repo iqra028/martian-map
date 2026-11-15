@@ -106,16 +106,34 @@ a { color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent
 .note-inline { color: var(--text-3); font-size: 13px; }
 .kicker { color: var(--text-3); font-size: 13px; }
 
+/* ---------- go / no-go poll ----------
+   Each area answers like a flight-control console: neutral rows, colour only on the answer. */
+.poll-tally { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 13px; }
+.tally-bar { display: inline-flex; gap: 3px; }
+.tally-bar i { width: 14px; height: 4px; border-radius: 2px; background: var(--surface-3); }
+.tally-bar i[data-level="go"] { background: var(--nominal); }
+.tally-bar i[data-level="caution"] { background: var(--caution); }
+.tally-bar i[data-level="nogo"] { background: var(--warning); }
+.poll-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.poll-row {
+  display: grid; grid-template-columns: 1fr auto; column-gap: 12px;
+  padding: 9px 0; border-bottom: 1px solid var(--line);
+}
+.poll-area { font-weight: 500; }
+.poll-call { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--text-3); }
+.poll-detail { grid-column: 1 / -1; color: var(--text-2); font-size: 13px; }
+.poll-row[data-level="go"] .poll-detail { color: var(--text-3); }
+.poll-row[data-level="go"] .poll-call { color: var(--nominal); }
+.poll-row[data-level="caution"] .poll-call { color: var(--caution); }
+.poll-row[data-level="nogo"] .poll-call { color: var(--warning); }
+.poll-row[data-level="nogo"] .poll-area { color: var(--warning); }
+.poll-mark { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.poll-row[data-level="caution"] .poll-mark { border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); width: 9px; height: 9px; }
+.poll-row[data-level="nogo"] .poll-mark { border-radius: 1px; }
+.poll-row[data-level="pending"] .poll-mark { background: none; box-shadow: inset 0 0 0 1.5px currentColor; }
+
 /* ---------- callouts ---------- */
-.status-card, .pnr, .abort-info { border-radius: var(--radius); background: var(--surface); padding: 14px 16px; }
-.status-card[data-level="go"] { background: var(--tint-go); }
-.status-card[data-level="caution"] { background: var(--tint-caution); }
-.status-card[data-level="nogo"] { background: var(--tint-nogo); }
-.status-head { display: flex; align-items: center; gap: 10px; }
-.status-shape { width: 11px; height: 11px; }
-.status-title { font-size: 16px; font-weight: 600; }
-.status-reasons { margin: 6px 0 0 21px; padding: 0 0 0 16px; display: grid; gap: 2px; color: var(--text); font-size: 14px; }
-.status-reasons li::marker { color: var(--text-3); }
+.pnr, .abort-info { border-radius: var(--radius); background: var(--surface); padding: 14px 16px; }
 
 /* ---------- key numbers ---------- */
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; }

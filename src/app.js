@@ -18,7 +18,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const clone = (route) => route.map((w) => ({ ...w, pos: [...w.pos] }));
 const LEVEL_TEXT = { go: 'Go', caution: 'Caution', nogo: 'No-go' };
-const CALLOUT_TEXT = { go: 'Go for EVA', caution: 'Caution — review before egress', nogo: 'No-go — do not egress' };
+const CALL_TEXT = { ...LEVEL_TEXT, pending: 'Standby' };
 const PNR_LEVEL = { NOMINAL: 'go', CAUTION: 'caution', CRITICAL_ABORT: 'nogo' };
 const SLOPE_COLOR = Object.fromEntries(SLOPE_CLASSES.map((c) => [c.id, c.color]));
 const CREW = {
@@ -222,17 +222,17 @@ function renderMarkers() {
 }
 
 function renderStatus() {
-  const { level, reasons } = result.verdict;
-  const pill = $('status-pill');
-  pill.dataset.level = level;
+  const { level, poll } = result.verdict;
+  const go = poll.filter((p) => p.level === 'go').length;
+  $('status-pill').dataset.level = level;
   $('status-pill-text').textContent = LEVEL_TEXT[level];
-  $('status-pill-sub').textContent = reasons.length ? `${reasons.length} issue${reasons.length > 1 ? 's' : ''}` : 'All nominal';
-  const card = $('status-card');
-  card.dataset.level = level;
-  $('status-title').textContent = CALLOUT_TEXT[level];
-  $('status-reasons').innerHTML = reasons.length
-    ? reasons.map((r) => `<li data-level="${r.level}">${esc(r.text)}</li>`).join('')
-    : '<li>All checks nominal</li>';
+  $('status-pill-sub').textContent = `${go} of ${poll.length} go`;
+  $('poll-tally').innerHTML = `<span class="tally-bar" aria-hidden="true">${poll.map((p) => `<i data-level="${p.level}"></i>`).join('')}</span>${go} of ${poll.length} go`;
+  $('poll').innerHTML = poll.map((p) => `<li class="poll-row" data-level="${p.level}">
+      <span class="poll-area">${esc(p.label)}</span>
+      <span class="poll-call"><span class="poll-mark" aria-hidden="true"></span>${CALL_TEXT[p.level]}</span>
+      <span class="poll-detail">${esc(p.detail)}</span>
+    </li>`).join('');
 }
 
 function renderPlan() {

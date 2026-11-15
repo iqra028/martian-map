@@ -4,8 +4,9 @@
 **EVA site:** Sakarya Vallis, a chasm cut into Mount Sharp (Aeolis Mons), Gale Crater — `5.08° S, 137.26° E`
 
 A browser-based Marswalk planner. Crew pick or drag stops on real HiRISE terrain; the app routes each
-leg around ground that is too steep to walk, then gives one answer — **GO / CAUTION / NO-GO** with the
-reasons — from terrain, suit consumables, point of no return, weather, dust and space weather.
+leg around ground that is too steep to walk, then runs a mission-control style **go / no-go poll**: terrain,
+consumables (incl. point of no return), dust, radiation and space weather each answer go, caution or no-go
+with the evidence, and the worst answer is the call.
 
 ---
 
