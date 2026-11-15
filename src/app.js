@@ -7,11 +7,12 @@
  */
 
 import { ElevationService } from './data/elevation-service.js';
-import { SLOPE_CLASSES, classifySlope, profileRoute, findSafePath } from './data/terrain-analysis.js';
+import { SLOPE_CLASSES, ROUGHNESS, classifySlope, profileRoute, findSafePath } from './data/terrain-analysis.js';
 import { EVA, RADIATION, environmentFor, planEva, evaluateGoNoGo, integrateWalk } from './core/eva-plan.js';
 import { MissionStore } from './core/mission-state.js';
 import { SITE, DEFAULT_ROUTE, NEW_STOP_PHOTO, BASEMAPS, SOURCES } from './config/mission.js';
 import { fetchSpaceWeather } from './data/space-weather.js';
+import { REMS_FEED, parseRems } from './data/rems.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -52,7 +53,7 @@ const basemaps = BASEMAPS.map((b) => {
   const layer = L.tileLayer(b.url, {
     tileSize: 256, maxNativeZoom: b.maxNative, maxZoom: 17, noWrap: true,
     bounds: [[-90, -180], [90, 180]], opacity: b.opacity,
-    attribution: '<a href="https://trek.nasa.gov/mars" target="_blank" rel="noopener">NASA / USGS</a>'
+    attribution: b.attribution || '<a href="https://trek.nasa.gov/mars" target="_blank" rel="noopener">NASA / USGS</a>'
   });
   layer.on('tileerror', () => { failedTiles.add(b.name); renderTileStatus(); });
   if (b.on) layer.addTo(map);
@@ -91,7 +92,7 @@ function buildOverlays() {
   const nw = raster.pixelToGeographic(-0.5, -0.5);
   const se = raster.pixelToGeographic(raster.metadata.lines - 0.5, raster.metadata.samples - 0.5);
   const dtmBounds = [[se.lat, nw.lon], [nw.lat, se.lon]];
-  const ortho = L.imageOverlay(SITE.ortho.url, SITE.ortho.bounds, { opacity: 1 });
+  const ortho = L.imageOverlay(SITE.ortho.url, SITE.ortho.bounds, { opacity: 1, attribution: 'HiRISE: NASA/JPL/UArizona' });
   transparentPadding(SITE.ortho.url).then((url) => ortho.setUrl(url)).catch(() => {});
   overlays = [
     { id: 'ortho', name: 'HiRISE image', detail: '5 m/px · ' + SITE.ortho.productId, on: true, opacity: 1, layer: ortho },
@@ -99,6 +100,8 @@ function buildOverlays() {
       layer: L.imageOverlay('./data/terrain/hillshade.png', dtmBounds, { opacity: 0.6 }) },
     { id: 'slope', name: 'Steep ground', detail: 'Orange 15–20°, red over 20° (no-go)', on: true, opacity: 0.7,
       layer: L.imageOverlay('./data/terrain/slope.png', dtmBounds, { opacity: 0.7 }) },
+    { id: 'rough', name: 'Rough ground', detail: 'Violet: blocks and ledges from the 1 m model (darker = boulder field)', on: false, opacity: 0.8,
+      layer: L.imageOverlay('./data/terrain/rough.png', dtmBounds, { opacity: 0.8 }) },
     { id: 'footprint', name: 'Terrain model outline', detail: 'Stops must be placed inside', on: true, opacity: 1,
       layer: L.rectangle(dtmBounds, { color: '#f3f4f6', weight: 1.5, dashArray: '6 6', fill: false, interactive: false }) },
     { id: 'geology', name: 'USGS geologic units', detail: 'Online · regional 1:20M map', on: false, opacity: 1,
@@ -281,14 +284,14 @@ function renderPlan() {
 
 function stopInfo(i) {
   const s = result.profile.samples.find((x) => x.legIdx === i) || result.profile.samples[0];
-  return { elevM: s?.elevM, slopeDeg: s?.terrainSlopeDeg, st: result.plan.stops.find((x) => x.idx === i) };
+  return { elevM: s?.elevM, slopeDeg: s?.terrainSlopeDeg, roughM: s?.roughnessM, st: result.plan.stops.find((x) => x.idx === i) };
 }
 
 function renderStop() {
   const wps = store.getState().waypoints;
   const i = ui.activeStop;
   const wp = wps[i];
-  const { elevM, slopeDeg, st } = stopInfo(i);
+  const { elevM, slopeDeg, roughM, st } = stopInfo(i);
   $('stop-progress').textContent = i === 0 ? `Base camp · ${wps.length - 1} stops` : `Stop ${i} of ${wps.length - 1}`;
   $('btn-prev').disabled = i === 0;
   $('btn-next').disabled = i === wps.length - 1;
@@ -297,7 +300,10 @@ function renderStop() {
   $('stop-objective').textContent = wp.objective;
   const facts = [
     ['Elevation', Number.isFinite(elevM) ? `${Math.round(elevM)} m` : '—'],
-    ['Ground slope', Number.isFinite(slopeDeg) ? `${slopeDeg.toFixed(1)}° · ${classifySlope(slopeDeg).label}` : '—']
+    ['Ground slope', Number.isFinite(slopeDeg) ? `${slopeDeg.toFixed(1)}° · ${classifySlope(slopeDeg).label}` : '—'],
+    ['Footing', Number.isFinite(roughM)
+      ? `${roughM >= ROUGHNESS.blockyM ? 'Boulder field' : roughM >= ROUGHNESS.roughM ? 'Rough, blocks and ledges' : 'Even'} · ${roughM.toFixed(1)} m relief`
+      : '—']
   ];
   if (st) {
     facts.push(['Arrive', met(st.arriveH)]);
@@ -688,11 +694,21 @@ async function boot() {
   try { briefed = localStorage.getItem('mm-briefed') === '1'; } catch { /* storage blocked */ }
   if (!briefed) openModal('briefing');
 
+  // Latest REMS sols straight from the feed; the bundled snapshot covers offline / feed down
   try {
-    const r = await fetch(SITE.weather);
-    sols = (await r.json()).sols || [];
+    const r = await fetch(REMS_FEED, { signal: AbortSignal.timeout(6000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    sols = parseRems(await r.json());
+    if (!sols.length) throw new Error('empty feed');
+    $('wx-source').textContent = 'Live from the Curiosity REMS feed.';
   } catch {
-    sols = [];
+    try {
+      const snap = await (await fetch(SITE.weather)).json();
+      sols = snap.sols || [];
+      $('wx-source').textContent = `Offline snapshot from ${snap.fetchedAt.slice(0, 10)} (live feed unreachable).`;
+    } catch {
+      sols = [];
+    }
   }
   $('sol-select').innerHTML = sols.map((s, i) => `<option value="${i}">Sol ${s.sol} · ${esc(s.earthDate)}</option>`).join('');
 

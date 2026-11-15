@@ -63,6 +63,12 @@ export class ElevationService {
       }
 
       this.activeRaster = loadDtmRaster(data);
+      // Optional roughness grid (same shape as the elevations), metres; NaN where no data
+      if (typeof source === 'string' && data.roughness) {
+        const r = data.roughness;
+        const raw = new Uint8Array(await readFile(siblingPath(source, r.file), true));
+        this.activeRaster.roughness = Float32Array.from(raw, (v) => (v === r.noData ? NaN : v * r.scale + r.offset));
+      }
       this.status = 'READY';
       return this.activeRaster;
     } catch (err) {

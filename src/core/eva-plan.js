@@ -214,6 +214,11 @@ export function evaluateGoNoGo({ routing, summary, plan, env, spaceWeather }) {
 
   if (env.dust.level !== 'go') push(env.dust.level, `${env.dust.label} (τ ${env.tau.toFixed(2)})`);
   if (summary.steep.length) push('caution', `${summary.steep.length} steep stretch${summary.steep.length > 1 ? 'es' : ''} (15–20°)`);
+  const rough = summary.rough || [];
+  if (rough.length) {
+    const worst = Math.max(...rough.map((r) => r.maxRoughM));
+    push('caution', `${rough.length} rough-ground stretch${rough.length > 1 ? 'es' : ''} (blocks up to ~${worst.toFixed(1)} m relief)`);
+  }
   if (spaceWeather && spaceWeather.status !== 'go') push(spaceWeather.status === 'nogo' ? 'nogo' : 'caution', spaceWeather.text);
 
   reasons.sort((a, b) => RANK[b.level] - RANK[a.level]);

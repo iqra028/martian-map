@@ -6,6 +6,7 @@ import { DtmRaster, decodeElevationGrid } from '../src/data/dtm-loader.js';
 import { ElevationService } from '../src/data/elevation-service.js';
 import { classifySlope, slopeFromGrid, profileRoute, findSafePath } from '../src/data/terrain-analysis.js';
 import { DEFAULT_ROUTE } from '../src/config/mission.js';
+import { parseRems } from '../src/data/rems.js';
 
 // n×n raster of 10 m cells straddling the equator; elev(row, col) gives metres
 const CELL_DEG = 10 / ((Math.PI / 180) * 3389500);
@@ -62,6 +63,29 @@ test('profileRoute flags the impassable crossing on a straight leg', () => {
   assert.ok(profile.summary.maxTerrainSlopeDeg >= 20);
 });
 
+test('findSafePath skirts a boulder field on flat ground, and profileRoute reports rough runs', () => {
+  const raster = grid(40, () => 0);
+  // Blocky band across columns 18–22, except rows 0–4
+  raster.roughness = Float32Array.from({ length: 1600 }, (_, i) => ((i % 40) >= 18 && (i % 40) <= 22 && (i / 40 | 0) > 4 ? 1.5 : 0.1));
+  // Blocks cost extra but are not forbidden, so the gap must be near enough to be worth the detour
+  const from = at(raster, 9, 5), to = at(raster, 9, 35);
+  const r = findSafePath(raster, from, to);
+  const straight = profileRoute(raster, [from, to], { closeLoop: false });
+  assert.ok(r.lengthM > 300, `should detour around the band, got ${r.lengthM} m`);
+  assert.equal(straight.summary.rough.length, 1);
+  assert.equal(straight.summary.rough[0].maxRoughM, 1.5);
+  assert.equal(profileRoute(raster, [from, to], { closeLoop: false, legPaths: [r.path] }).summary.rough.length, 0);
+});
+
+test('parseRems skips sols without temperatures and maps feed fields', () => {
+  const sols = parseRems({ soles: [
+    { sol: '10', terrestrial_date: '2026-01-02', min_temp: '--', max_temp: '-5' },
+    { sol: '9', terrestrial_date: '2026-01-01', min_temp: '-70', max_temp: '-4', pressure: '780', atmo_opacity: 'Sunny' }
+  ] });
+  assert.equal(sols.length, 1);
+  assert.deepEqual([sols[0].sol, sols[0].airMinC, sols[0].pressurePa, sols[0].opacity, sols[0].groundMinC], [9, -70, 780, 'Sunny', null]);
+});
+
 test('decodeElevationGrid: int16 decimetres with offset, no-data → NaN', () => {
   const buf = new ArrayBuffer(6);
   const v = new DataView(buf);
@@ -76,6 +100,7 @@ test('real Sakarya DTM: default route has safe legs that never exceed 20°', asy
   const raster = await new ElevationService().load(join(process.cwd(), 'data/terrain/sakarya-10m.json'));
   assert.equal(raster.metadata.samples, 689);
   assert.equal(raster.metadata.lines, 1590);
+  assert.equal(raster.roughness.length, 689 * 1590);
   const pts = DEFAULT_ROUTE.map((w) => w.pos);
   const legPaths = pts.map((p, i) => {
     const r = findSafePath(raster, p, pts[(i + 1) % pts.length]);

@@ -9,13 +9,15 @@
  *   sakarya-10m.bin    Int16 elevations, decimetres above BASE_M, row-major north→south
  *   hillshade.png      shaded relief overlay (transparent where no data)
  *   slope.png          slope-hazard overlay (steep / impassable cells)
+ *   sakarya-10m-rough.bin  Uint8 roughness (decimetres RMS about a per-cell plane, 255 = no data)
+ *   rough.png          rough / blocky ground overlay
  *
  * The 1 m DTM (438 MB) is block-averaged to 10 m so the app ships ~2 MB of terrain.
  * Download: see data/manifest.json → downloadUrl.
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
-import { SLOPE_CLASSES, slopeFromGrid } from '../src/data/terrain-analysis.js';
+import { SLOPE_CLASSES, ROUGHNESS, slopeFromGrid } from '../src/data/terrain-analysis.js';
 
 const BLOCK = 10;
 const BASE_M = -4100;           // Int16 offset; DTM valid range is -4043.75 … -2415.92 m
@@ -66,23 +68,57 @@ const raw = new Float32Array(buf.buffer, buf.byteOffset + offset, lines * sample
 const outW = Math.ceil(samples / BLOCK);
 const outH = Math.ceil(lines / BLOCK);
 const grid = new Float32Array(outW * outH).fill(NaN);
-const sum = new Float64Array(outW);
-const cnt = new Uint32Array(outW);
+// Roughness: RMS of the 1 m heights about a best-fit plane in each 10 m block. It keeps the
+// metre-scale relief (blocks, ledges) that block-averaging smooths out of the elevation grid.
+const rough = new Float32Array(outW * outH).fill(NaN);
+const Z_REF = -3000; // keeps the least-squares sums well conditioned
+// Per block column: n, Σx, Σy, Σz, Σxx, Σyy, Σxy, Σxz, Σyz, Σzz
+const acc = Array.from({ length: 10 }, () => new Float64Array(outW));
 
 for (let by = 0; by < outH; by++) {
-  sum.fill(0); cnt.fill(0);
+  acc.forEach((a) => a.fill(0));
+  const [n, sx, sy, sz, sxx, syy, sxy, sxz, syz, szz] = acc;
   const y1 = Math.min(lines, (by + 1) * BLOCK);
   for (let y = by * BLOCK; y < y1; y++) {
-    const row = y * samples;
+    const row = y * samples, ly = y - by * BLOCK;
     for (let x = 0; x < samples; x++) {
       const v = raw[row + x];
-      if (v >= validMin && v <= validMax) { sum[(x / BLOCK) | 0] += v; cnt[(x / BLOCK) | 0]++; }
+      if (!(v >= validMin && v <= validMax)) continue;
+      const b = (x / BLOCK) | 0, lx = x - b * BLOCK, z = v - Z_REF;
+      n[b]++; sx[b] += lx; sy[b] += ly; sz[b] += z;
+      sxx[b] += lx * lx; syy[b] += ly * ly; sxy[b] += lx * ly;
+      sxz[b] += lx * z; syz[b] += ly * z; szz[b] += z * z;
     }
   }
   for (let bx = 0; bx < outW; bx++) {
     const area = (Math.min(samples, (bx + 1) * BLOCK) - bx * BLOCK) * (y1 - by * BLOCK);
-    if (cnt[bx] >= area * MIN_VALID_FRACTION) grid[by * outW + bx] = sum[bx] / cnt[bx];
+    if (n[bx] < area * MIN_VALID_FRACTION) continue;
+    const i = by * outW + bx;
+    grid[i] = sz[bx] / n[bx] + Z_REF;
+    const beta = solve3(
+      [[n[bx], sx[bx], sy[bx]], [sx[bx], sxx[bx], sxy[bx]], [sy[bx], sxy[bx], syy[bx]]],
+      [sz[bx], sxz[bx], syz[bx]]
+    );
+    if (beta) {
+      const ssRes = szz[bx] - (beta[0] * sz[bx] + beta[1] * sxz[bx] + beta[2] * syz[bx]);
+      rough[i] = Math.sqrt(Math.max(0, ssRes) / n[bx]);
+    }
   }
+}
+
+/** Solves a 3×3 linear system by Cramer's rule; null when singular. */
+function solve3(m, r) {
+  const det = (a) => a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
+    - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+  const d = det(m);
+  if (Math.abs(d) < 1e-9) return null;
+  return [0, 1, 2].map((c) => det(m.map((row, k) => row.map((v, j) => (j === c ? r[k] : v)))) / d);
+}
+
+{
+  const vals = [...rough].filter((v) => !Number.isNaN(v)).sort((a, b) => a - b);
+  const q = (p) => vals[Math.floor(p * (vals.length - 1))].toFixed(2);
+  console.log(`roughness m RMS: p50 ${q(0.5)} p75 ${q(0.75)} p90 ${q(0.9)} p95 ${q(0.95)} p99 ${q(0.99)} max ${q(1)}`);
 }
 
 const i16 = new Int16Array(outW * outH);
@@ -130,8 +166,15 @@ const header = {
   },
   bounds,
   elevation: { min: eMin, max: eMax },
-  encoding: { type: 'int16-le', file: 'sakarya-10m.bin', scale: 0.1, offset: BASE_M, noData: NODATA_I16 }
+  encoding: { type: 'int16-le', file: 'sakarya-10m.bin', scale: 0.1, offset: BASE_M, noData: NODATA_I16 },
+  // RMS of the 1 m DTM about a plane fitted to each 10 m cell: metre-scale blocks and ledges
+  roughness: { type: 'uint8', file: 'sakarya-10m-rough.bin', scale: 0.1, offset: 0, noData: 255 }
 };
+const rough8 = new Uint8Array(outW * outH);
+for (let i = 0; i < rough.length; i++) {
+  rough8[i] = Number.isNaN(rough[i]) ? 255 : Math.min(254, Math.round(rough[i] * 10));
+}
+writeFileSync(new URL('sakarya-10m-rough.bin', outDir), Buffer.from(rough8.buffer));
 writeFileSync(new URL('sakarya-10m.json', outDir), JSON.stringify(header, null, 1) + '\n');
 
 /* ---------- overlays ---------- */
@@ -143,6 +186,9 @@ const slopeImg = Buffer.alloc(outW * outH * 4);
 const az = (315 * Math.PI) / 180, alt = (45 * Math.PI) / 180;
 const light = [Math.sin(az) * Math.cos(alt), Math.cos(az) * Math.cos(alt), Math.sin(alt)];
 const hazardColors = { steep: [227, 163, 59, 90], impassable: [229, 83, 75, 130] };
+const roughImg = Buffer.alloc(outW * outH * 4);
+// Same thresholds as ROUGHNESS in terrain-analysis.js; violet keeps it distinct from slope amber/red
+const roughColor = (r) => (r >= ROUGHNESS.blockyM ? [176, 112, 224, 170] : r >= ROUGHNESS.roughM ? [176, 112, 224, 80] : null);
 
 for (let y = 0; y < outH; y++) {
   for (let x = 0; x < outW; x++) {
@@ -158,11 +204,15 @@ for (let y = 0; y < outH; y++) {
     const cls = SLOPE_CLASSES.find((c) => s.slopeDeg < c.maxDeg);
     const col = hazardColors[cls.id];
     if (col) { slopeImg[p] = col[0]; slopeImg[p + 1] = col[1]; slopeImg[p + 2] = col[2]; slopeImg[p + 3] = col[3]; }
+
+    const rc = roughColor(rough[i]);
+    if (rc) { roughImg[p] = rc[0]; roughImg[p + 1] = rc[1]; roughImg[p + 2] = rc[2]; roughImg[p + 3] = rc[3]; }
   }
 }
 
 writeFileSync(new URL('hillshade.png', outDir), encodePng(outW, outH, shade));
 writeFileSync(new URL('slope.png', outDir), encodePng(outW, outH, slopeImg));
+writeFileSync(new URL('rough.png', outDir), encodePng(outW, outH, roughImg));
 
 console.log(`grid ${outW}×${outH} @ ${cellM.toFixed(2)} m, ${valid} valid cells, elev ${eMin.toFixed(1)}…${eMax.toFixed(1)} m`);
 

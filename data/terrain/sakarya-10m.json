@@ -45,5 +45,12 @@
   "scale": 0.1,
   "offset": -4100,
   "noData": -32768
+ },
+ "roughness": {
+  "type": "uint8",
+  "file": "sakarya-10m-rough.bin",
+  "scale": 0.1,
+  "offset": 0,
+  "noData": 255
  }
 }

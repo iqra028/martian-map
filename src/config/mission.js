@@ -25,22 +25,18 @@ export const SITE = {
     'map the layers from the rim, then sample the lowest exposed layers on the canyon floor.'
 };
 
-const ANALOG = {
-  plain: {
-    src: './img/PIA24430.jpg',
-    caption: 'Analog: rock-strewn plain seen by Perseverance in Jezero Crater — not this site.',
-    link: 'https://photojournal.jpl.nasa.gov/catalog/PIA24430'
-  },
-  layers: {
-    src: './img/PIA26366.jpg',
-    caption: 'Analog: layered rock exposure (NASA PIA26366) — not this site.',
-    link: 'https://photojournal.jpl.nasa.gov/catalog/PIA26366'
-  },
-  rocks: {
-    src: './img/PIA24484.jpg',
-    caption: 'Analog: loose rocks and bright bedrock patches seen by Perseverance — not this site.',
-    link: 'https://photojournal.jpl.nasa.gov/catalog/PIA24484'
-  }
+// Ground truth from Curiosity on the same mountain (Mount Sharp), ~15–25 km from this canyon.
+// No rover has driven Sakarya Vallis itself, so these show the same rock units, not the exact spot.
+const photo = (id, what) => ({
+  src: `./img/${id}.jpg`,
+  caption: `Curiosity on Mount Sharp, ~15–25 km from this canyon: ${what} Image: NASA/JPL-Caltech/MSSS.`,
+  link: `https://images.nasa.gov/details/${id}`
+});
+const CURIOSITY = {
+  plain: photo('PIA19818', 'cross-bedded sandstone and loose rubble on the lower slopes.'),
+  buttes: photo('PIA19912', 'layered buttes of the mountain’s lower formations.'),
+  strata: photo('PIA19839', 'tilted strata at the base of the mountain.'),
+  ridge: photo('PIA21716', 'view up-slope across layered rock toward Vera Rubin Ridge.')
 };
 
 export const DEFAULT_ROUTE = [
@@ -50,7 +46,7 @@ export const DEFAULT_ROUTE = [
     pos: [-5.0802, 137.2710],
     type: 'base',
     objective: 'Suit checkout and egress on flat plateau ground east of the canyon.',
-    photo: ANALOG.plain
+    photo: CURIOSITY.plain
   },
   {
     id: 'stop-1',
@@ -58,7 +54,7 @@ export const DEFAULT_ROUTE = [
     pos: [-5.0727, 137.2573],
     type: 'science',
     objective: 'Photograph the opposite canyon wall and mark layer boundaries before descending.',
-    photo: ANALOG.layers
+    photo: CURIOSITY.buttes
   },
   {
     id: 'stop-2',
@@ -66,7 +62,7 @@ export const DEFAULT_ROUTE = [
     pos: [-5.0790, 137.2431],
     type: 'science',
     objective: 'Sample the lowest exposed layers and fallen blocks; compare with the rim, ~250 m higher.',
-    photo: ANALOG.rocks
+    photo: CURIOSITY.strata
   },
   {
     id: 'stop-3',
@@ -74,11 +70,11 @@ export const DEFAULT_ROUTE = [
     pos: [-5.0901, 137.2618],
     type: 'science',
     objective: 'Second view of the wall: check whether layers seen from the north rim continue sideways.',
-    photo: ANALOG.layers
+    photo: CURIOSITY.ridge
   }
 ];
 
-export const NEW_STOP_PHOTO = ANALOG.rocks;
+export const NEW_STOP_PHOTO = CURIOSITY.plain;
 
 export const BASEMAPS = [
   {
@@ -95,6 +91,7 @@ export const BASEMAPS = [
     name: 'CTX visible mosaic',
     detail: '5 m/px · Mars Reconnaissance Orbiter',
     url: 'https://astro.arcgis.com/arcgis/rest/services/OnMars/CTX/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'CTX: NASA/JPL/MSSS · tiles <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a>',
     maxNative: 12,
     on: true,
     opacity: 1
@@ -123,7 +120,9 @@ export const SOURCES = [
   ['HiRISE DTM DTEEC_006855_1750_007501_1750_A01 + orthoimage', 'https://www.uahirise.org/dtm/dtm.php?ID=PSP_006855_1750'],
   ['NASA Mars Trek (MOLA, THEMIS, Viking tiles)', 'https://trek.nasa.gov/mars/'],
   ['USGS Astrogeology CTX mosaic & Mars geologic map', 'https://astrogeology.usgs.gov/'],
-  ['Curiosity REMS weather (CAB / NASA JPL)', 'https://mars.nasa.gov/msl/weather/'],
+  ['Curiosity REMS weather (Centro de Astrobiología CSIC-INTA / NASA JPL)', 'https://mars.nasa.gov/msl/weather/'],
+  ['Curiosity Mount Sharp photos (NASA Photojournal PIA19818, 19912, 19839, 21716)', 'https://images.nasa.gov/search?q=PIA19839'],
+  ['Curiosity’s proposed path up Mount Sharp', 'https://science.nasa.gov/resource/curiositys-proposed-path-up-mount-sharp/'],
   ['Curiosity RAD dose — Hassler et al. 2014, Science 343', 'https://doi.org/10.1126/science.1244797'],
   ['NASA DONKI space weather (solar energetic particles)', 'https://kauai.ccmc.gsfc.nasa.gov/DONKI/'],
   ['NASA BVAD life-support baseline (NASA/TP-2015-218570)', 'https://ntrs.nasa.gov/citations/20150002905']

@@ -15,9 +15,11 @@ reasons — from terrain, suit consumables, point of no return, weather, dust an
 | :--- | :--- |
 | **Real terrain** | HiRISE stereo DTM `DTEEC_006855_1750_007501_1750_A01` (1 m/px) block-averaged to a 10 m grid. Elevation, slope, hillshade and the slope overlay all come from it. |
 | **Hazards from data** | Slope per 10 m cell: <10° nominal, 10–15° moderate, 15–20° steep (caution), ≥20° no-go. The whole route is sampled every cell, not just at stops. |
-| **Safe-path routing** | A* on the slope grid: ≥20° cells are walls, steeper ground and climbing cost more, no corner cutting past walls. A leg with no safe path is drawn dashed red and makes the plan NO-GO. |
+| **Rough ground** | Each 10 m cell also stores the RMS of the 1 m heights about a fitted plane, which catches blocks and ledges the averaging smooths away. ≥0.5 m (top ~2% of the site) is rough → CAUTION; ≥1 m is a boulder field. Shown on the map as a violet overlay and per stop as "Footing". |
+| **Safe-path routing** | A* on the slope grid: ≥20° cells are walls, steeper ground and climbing cost more, rough ground costs ×2 and boulder fields ×6, no corner cutting past walls. A leg with no safe path is drawn dashed red and makes the plan NO-GO. |
 | **EVA plan** | Metabolic cost per sample from grade and speed (existing `resource-model.js`), 30 min science time per stop, O₂ / cooling water / battery at return, and point-of-no-return margin at every stop using its own safe return path. |
-| **Weather** | 30 recent sols of Curiosity REMS (`data/rems-recent.json`). Midday air temperature drives suit heater load. |
+| **Weather** | Latest 30 sols of Curiosity REMS, fetched live from the feed; falls back to the bundled snapshot (`data/rems-recent.json`) offline. Midday air temperature drives suit heater load. |
+| **Ground photos** | Each stop shows a Curiosity image from Mount Sharp, the same mountain ~15–25 km away (no rover has been in Sakarya Vallis). |
 | **Dust what-if** | Optical depth τ slider: haze slows the walk ×0.8 (caution), storm ×0.5 (no-go); noon sunlight shown. |
 | **Radiation** | Curiosity RAD surface dose (0.64 mSv/day, Hassler et al. 2014) → dose for this EVA vs. the NASA 600 mSv career limit. |
 | **Space weather** | NASA DONKI solar particle events, last 7 days, checked live. Offline or failed → CAUTION, never silently GO. |
@@ -43,7 +45,7 @@ npm test         # node:test, no dependencies
 ```bash
 npm run data:rems                                   # refresh REMS weather snapshot
 curl -O https://hirise-pds.lpl.arizona.edu/PDS/DTM/PSP/ORB_006800_006899/PSP_006855_1750_PSP_007501_1750/DTEEC_006855_1750_007501_1750_A01.IMG
-npm run data:terrain -- DTEEC_006855_1750_007501_1750_A01.IMG   # 438 MB in → 2.2 MB grid + PNG overlays
+npm run data:terrain -- DTEEC_006855_1750_007501_1750_A01.IMG   # 438 MB in → 2.2 MB grid + roughness grid + PNG overlays
 ```
 The orthoimage is the PDS EXTRAS browse JPEG `PSP_006855_1750_RED_C_01_ORTHO.br.jpg`, which shares the DTM's projection.
 
@@ -60,10 +62,13 @@ canyon floor at the foot of the layered wall with **zero** cells over 20° and t
 ## 4. Assumptions and limits (read before trusting a number)
 - **Suit capacities** (1200 L O₂, 8 kg water, 1000 Wh) and the 25 % return reserve come from `resource-model.js`; they are planning values, not a real suit spec.
 - **Assumed:** 30 min per stop; heater 0 W at ≥ −20 °C, +1.5 W/°C colder, max 120 W; dust pace factors; buddy-assist pace 1 km/h; rover 8 km/h.
-- **10 m grid** hides boulders and metre-scale steps; the 20° limit is for this grid, not the ground under a boot.
+- **10 m grid**: the 20° limit is for this grid, not the ground under a boot. Roughness flags metre-scale blocks, but HiRISE stereo cannot resolve rocks under ~1–2 m.
 - **REMS** values are the public outreach summaries, not calibrated PDS data. The dust τ is a what-if, not measured.
 - **DONKI** events are seen from near Earth and may not reach Mars, so they give CAUTION, not NO-GO.
-- **Stop photos are analogs** from other Mars sites and are labelled as such; the HiRISE image is the real ground.
+- **Stop photos** are Curiosity views of the same rock units elsewhere on Mount Sharp, not the stop itself; the HiRISE image is the real ground.
+- **Data use:** all data is public NASA / USGS / university mission data, used under their media guidelines with credit
+  (images: NASA/JPL-Caltech/MSSS, NASA/JPL/UArizona; weather: CAB CSIC-INTA). CTX tiles are Esri's hosted service.
+  No NASA logo is used and the app does not claim NASA endorsement. DONKI uses `DEMO_KEY`; get a free key at api.nasa.gov for heavier use.
 - 3D view is not built yet (`src/views/scene-3d/terrain-contract.js` is the planned contract).
 
 ---

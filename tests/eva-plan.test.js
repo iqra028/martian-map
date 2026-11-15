@@ -62,6 +62,9 @@ test('evaluateGoNoGo levels: clean → go, steep → caution, unrouted leg → n
   const nogo = evaluateGoNoGo({ routing: [{ legIdx: 1, safe: false }], summary, plan, env });
   assert.equal(nogo.level, 'nogo');
   assert.match(nogo.reasons[0].text, /leg 2/);
+  const rough = evaluateGoNoGo({ routing: [], summary: { ...summary, rough: [{ maxRoughM: 0.7 }] }, plan, env });
+  assert.equal(rough.level, 'caution');
+  assert.match(rough.reasons[0].text, /rough-ground.*0\.7 m/);
 });
 
 test('space weather: recent SEP event → caution, old event → go', () => {

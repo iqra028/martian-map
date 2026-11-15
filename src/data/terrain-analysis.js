@@ -29,6 +29,22 @@ export function classifySlope(deg) {
 }
 
 /**
+ * Ground roughness thresholds (m RMS about a plane fitted to each 10 m cell of the 1 m DTM).
+ * Site median is ~0.14 m; ≥0.5 m (top ~2%) means ledges and blocks underfoot, ≥1 m boulder fields.
+ */
+export const ROUGHNESS = { roughM: 0.5, blockyM: 1.0 };
+
+/** Roughness (m) at a coordinate, or null when the raster has no roughness grid / no data there. */
+export function roughnessAt(raster, lat, lon) {
+  if (!raster.roughness || !raster.isWithinBounds(lat, lon)) return null;
+  const { line, sample } = raster.geographicToPixel(lat, lon);
+  const W = raster.metadata.samples, H = raster.metadata.lines;
+  const x = Math.min(W - 1, Math.max(0, Math.round(sample))), y = Math.min(H - 1, Math.max(0, Math.round(line)));
+  const v = raster.roughness[y * W + x];
+  return Number.isNaN(v) ? null : v;
+}
+
+/**
  * Slope at grid cell (x, y) from central differences (one-sided at edges / next to no-data).
  * @param {(x:number, y:number) => number} at - elevation accessor, NaN for no-data/out of grid
  * @param {number} cellM - cell size in metres (square cells)
@@ -102,6 +118,7 @@ export function profileRoute(raster, points, opts = {}) {
           distKm: (distM + segM * f) / 1000,
           elevM: r.valid ? r.elevation : null,
           terrainSlopeDeg: slope,
+          roughnessM: roughnessAt(raster, lat, lon),
           gradeDeg: 0
         };
         const prev = samples[samples.length - 1];
@@ -118,7 +135,9 @@ export function profileRoute(raster, points, opts = {}) {
     }
 
     leg.lengthKm = distM / 1000 - leg.fromKm;
-    leg.hazards = hazardRuns(samples.filter((s) => s.legIdx === i));
+    const legSamples = samples.filter((s) => s.legIdx === i);
+    leg.hazards = hazardRuns(legSamples);
+    leg.rough = roughRuns(legSamples);
     legs.push(leg);
   }
 
@@ -145,6 +164,21 @@ function hazardRuns(legSamples) {
   return runs;
 }
 
+/** Contiguous runs of rough (≥ROUGHNESS.roughM) ground along one leg. */
+function roughRuns(legSamples) {
+  const runs = [];
+  let cur = null;
+  for (const s of legSamples) {
+    if (s.roughnessM !== null && s.roughnessM >= ROUGHNESS.roughM) {
+      if (!cur) runs.push((cur = { fromKm: s.distKm, toKm: s.distKm, maxRoughM: 0, lat: s.lat, lon: s.lon }));
+      cur.toKm = s.distKm; cur.maxRoughM = Math.max(cur.maxRoughM, s.roughnessM);
+    } else {
+      cur = null;
+    }
+  }
+  return runs;
+}
+
 function summarize(samples, legs, distM) {
   const elevs = samples.map((s) => s.elevM).filter((v) => v !== null);
   const hazards = legs.flatMap((l) => l.hazards.map((h) => ({ ...h, legIdx: l.idx })));
@@ -156,6 +190,7 @@ function summarize(samples, legs, distM) {
     maxTerrainSlopeDeg: legs.reduce((a, l) => Math.max(a, l.maxSlopeDeg), 0),
     impassable: hazards.filter((h) => h.cls === 'impassable'),
     steep: hazards.filter((h) => h.cls === 'steep'),
+    rough: legs.flatMap((l) => l.rough.map((r) => ({ ...r, legIdx: l.idx }))),
     noDataLegs: legs.filter((l) => l.noData).map((l) => l.idx)
   };
 }
@@ -187,6 +222,8 @@ export function slopeGrid(raster) {
 export const ROUTING_COST = { nominal: 1, moderate: 1.6, steep: 4, impassable: Infinity };
 // Naismith-style climb penalty: 1 m of ascent costs like 8 m of level walking
 const CLIMB_PENALTY = 8;
+/** Extra cost multiplier on rough / blocky ground (on top of the slope cost). */
+export const ROUGH_COST = { rough: 2, blocky: 6 };
 
 /**
  * Least-effort walking path between two points that never enters terrain ≥ 20° slope.
@@ -222,9 +259,13 @@ export function findSafePath(raster, from, to, opts = {}) {
   heap.push(start, 0);
 
   const elev = (x, y) => { const v = raster.getPixelValue(x, y); return v === null ? NaN : v; };
+  const rough = raster.roughness;
   const costAt = (x, y) => {
     const sl = slopes[y * W + x];
-    return Number.isNaN(sl) ? Infinity : ROUTING_COST[classifySlope(sl).id];
+    if (Number.isNaN(sl)) return Infinity;
+    const r = rough ? rough[y * W + x] : NaN;
+    const rf = r >= ROUGHNESS.blockyM ? ROUGH_COST.blocky : r >= ROUGHNESS.roughM ? ROUGH_COST.rough : 1;
+    return ROUTING_COST[classifySlope(sl).id] * rf;
   };
   const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 
