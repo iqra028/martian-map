@@ -58,8 +58,8 @@
         "noDataHexConstant": "16#FF7FFFFB#"
       },
       "explorationRelationship": {
-        "relationshipToCandidateBoxwork": "The verified DTM covers a 16 km x 7 km chasm in the interior mound ~15.4 km west of the candidate Mount Sharp boxwork structures (centered near 5.06° S, 137.46° E). It serves as the authoritative high-resolution terrain validation testbed for the terrain pipeline.",
-        "usage": "Testbed for 1m elevation sampling, slope analysis, and 3D heightfield generation."
+        "relationshipToCandidateBoxwork": "The verified DTM covers a 16 km x 7 km chasm in the interior mound ~15.4 km west of the candidate Mount Sharp boxwork structures (centered near 5.06° S, 137.46° E).",
+        "usage": "Primary EVA site. Block-averaged to a 10 m grid (data/terrain/sakarya-10m.*) by tools/build-terrain.mjs for slope hazards, safe-path routing and the elevation profile; the matching HiRISE orthoimage (PSP_006855_1750_RED_C_01_ORTHO browse, ~5 m/px) is the map's ground image."
       }
     }
   ]

@@ -9,7 +9,26 @@
  * One source dataset. One geographic interpretation. One terrain-data interface. Multiple independent renderers.
  */
 
-import { loadDtmRaster, DtmRaster } from './dtm-loader.js';
+import { loadDtmRaster, decodeElevationGrid } from './dtm-loader.js';
+
+const isNode = typeof process !== 'undefined' && !!(process.versions && process.versions.node);
+const isUrl = (p) => /^https?:/.test(p);
+
+async function readFile(path, binary) {
+  if (isNode && !isUrl(path)) {
+    const fs = await import('node:fs');
+    const b = fs.readFileSync(path);
+    return binary ? b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) : b.toString('utf-8');
+  }
+  const resp = await fetch(path);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText} fetching ${path}`);
+  return binary ? resp.arrayBuffer() : resp.text();
+}
+
+/** Path/URL of a file sitting next to the header. */
+function siblingPath(headerPath, file) {
+  return headerPath.slice(0, headerPath.lastIndexOf('/') + 1) + file;
+}
 
 export class ElevationService {
   constructor(options = {}) {
@@ -33,19 +52,13 @@ export class ElevationService {
     try {
       let data = source;
 
-      // In browser or Node environment, if source is a URL/path string ending in .json:
-      if (typeof source === 'string' && (source.startsWith('http') || source.endsWith('.json'))) {
-        if (typeof fetch === 'function') {
-          const resp = await fetch(source);
-          if (!resp.ok) {
-            throw new Error(`HTTP ${resp.status} ${resp.statusText} fetching DTM source: ${source}`);
-          }
-          data = await resp.json();
-        } else {
-          // Node fallback if fs available
-          const fs = await import('fs');
-          const content = fs.readFileSync(source, 'utf-8');
-          data = JSON.parse(content);
+      // URL or file path to a JSON header (browser: fetch; Node: fs)
+      if (typeof source === 'string' && (isUrl(source) || source.endsWith('.json'))) {
+        data = JSON.parse(await readFile(source, false));
+        // Binary grid referenced by the header, e.g. sakarya-10m.json → sakarya-10m.bin
+        if (!data.data && data.encoding) {
+          const buffer = await readFile(siblingPath(source, data.encoding.file), true);
+          data = { ...data, data: decodeElevationGrid(data.encoding, buffer) };
         }
       }
 
