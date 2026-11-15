@@ -11,7 +11,7 @@ import { SLOPE_CLASSES, ROUGHNESS, classifySlope, profileRoute, findSafePath } f
 import { EVA, RADIATION, environmentFor, planEva, evaluateGoNoGo, integrateWalk } from './core/eva-plan.js';
 import { MissionStore } from './core/mission-state.js';
 import { SITE, DEFAULT_ROUTE, NEW_STOP_PHOTO, BASEMAPS, SOURCES } from './config/mission.js';
-import { fetchSpaceWeather } from './data/space-weather.js';
+import { fetchSepEvents, classifySpaceWeather } from './data/space-weather.js';
 import { REMS_FEED, parseRems } from './data/rems.js';
 
 const $ = (id) => document.getElementById(id);
@@ -43,7 +43,7 @@ const store = new MissionStore({ siteName: SITE.name, center: SITE.center, waypo
 const ui = { tab: 'plan', activeStop: 0, tau: 0.6, solIdx: 0, crew: 'solo', abort: false, adding: false, playTimer: null };
 let raster = null;
 let sols = [];
-let spaceWeather = null;
+let sepFeed = null; // {events} | {error} from DONKI, null while checking
 let result = null;
 const pathCache = new Map();
 
@@ -153,11 +153,12 @@ function recompute() {
     r && r.safe ? profileRoute(raster, [pts[i], pts[0]], { closeLoop: false, legPaths: [r.path] }).samples : null);
   const env = environmentFor(sols[ui.solIdx], ui.tau);
   const plan = planEva(profile, returnSamples, env);
+  const spaceWeather = spaceWeatherFor(sols[ui.solIdx]);
   const verdict = evaluateGoNoGo({
     routing: legs.map((l, i) => ({ legIdx: i, safe: l.safe })),
-    summary: profile.summary, plan, env, spaceWeather
+    summary: profile.summary, plan, env, spaceWeather, sol: sols[ui.solIdx]
   });
-  result = { pts, legs, profile, returns, returnSamples, env, plan, verdict };
+  result = { pts, legs, profile, returns, returnSamples, env, plan, verdict, spaceWeather };
   ui.activeStop = Math.min(ui.activeStop, pts.length - 1);
   render();
 }
@@ -356,6 +357,7 @@ function renderEnv() {
     b.classList.toggle('is-active', on);
     b.setAttribute('aria-pressed', String(on));
   });
+  $('sw-text').textContent = result.spaceWeather ? result.spaceWeather.text : 'Checking…';
   $('dust-effect').textContent = `${env.dust.label}: walking pace ×${env.paceFactor} (${plan.speedKmh.toFixed(1)} km/h), noon sunlight ${env.solarWm2} W/m².`;
   $('dust-overlay').style.opacity = Math.min(0.55, Math.max(0, (ui.tau - 0.5) / 2.1) * 0.55);
 
@@ -699,6 +701,39 @@ $('view-layers').addEventListener('input', (e) => {
   }
 });
 
+/* ---------------- space weather ---------------- */
+
+const pref = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch { return null; } };
+
+// One DONKI request covers every sol on offer; each sol is then judged locally, so switching sols is free
+async function loadSpaceWeather({ force = false } = {}) {
+  sepFeed = null;
+  recompute();
+  const key = pref('mm-nasa-key') || 'DEMO_KEY';
+  const dates = sols.map((s) => new Date(`${s.earthDate}T23:59:59Z`));
+  const from = new Date(Math.min(Date.now(), ...dates)), to = new Date();
+  let cached = null;
+  try { cached = JSON.parse(pref('mm-sep')); } catch { /* corrupt */ }
+  // Demo key allows 10 calls an hour, so reuse a good answer for an hour
+  const fresh = !force && cached && cached.from === day(from) && Date.now() - Date.parse(cached.checkedAt) < 36e5;
+  sepFeed = fresh ? cached : await fetchSepEvents(from, to, key);
+  if (!sepFeed.error && !fresh) pref('mm-sep', JSON.stringify({ ...sepFeed, from: day(from) }));
+  recompute();
+}
+const day = (d) => d.toISOString().slice(0, 10);
+
+function spaceWeatherFor(sol) {
+  if (!sepFeed) return null; // still checking
+  if (sepFeed.error) return { status: 'caution', text: `Not checked. ${sepFeed.error}` };
+  return classifySpaceWeather(sepFeed.events, sol ? new Date(`${sol.earthDate}T23:59:59Z`) : new Date());
+}
+
+$('nasa-key-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  pref('mm-nasa-key', $('nasa-key').value.trim());
+  loadSpaceWeather({ force: true });
+});
+
 /* ---------------- boot ---------------- */
 
 async function boot() {
@@ -708,6 +743,7 @@ async function boot() {
   let briefed = false;
   try { briefed = localStorage.getItem('mm-briefed') === '1'; } catch { /* storage blocked */ }
   if (!briefed) openModal('briefing');
+  $('nasa-key').value = pref('mm-nasa-key') || '';
 
   // Latest REMS sols straight from the feed; the bundled snapshot covers offline / feed down
   try {
@@ -741,16 +777,7 @@ async function boot() {
   recompute();
   fitRoute();
 
-  // DEMO_KEY allows ~30 calls/hour, so reuse a successful check for an hour
-  let cached = null;
-  try { cached = JSON.parse(localStorage.getItem('mm-sw')); } catch { /* storage blocked */ }
-  const fresh = cached && Date.now() - Date.parse(cached.checkedAt) < 36e5;
-  (fresh ? Promise.resolve(cached) : fetchSpaceWeather()).then((sw) => {
-    if (!sw.error) try { localStorage.setItem('mm-sw', JSON.stringify(sw)); } catch { /* storage blocked */ }
-    spaceWeather = sw;
-    $('sw-text').textContent = sw.text;
-    recompute();
-  });
+  loadSpaceWeather();
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 }

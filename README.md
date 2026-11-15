@@ -23,7 +23,7 @@ with the evidence, and the worst answer is the call.
 | **Ground photos** | Each stop shows a Curiosity image from Mount Sharp, the same mountain ~15–25 km away (no rover has been in Sakarya Vallis). |
 | **Dust what-if** | Optical depth τ slider: haze slows the walk ×0.8 (caution), storm ×0.5 (no-go); noon sunlight shown. |
 | **Radiation** | Curiosity RAD surface dose (0.64 mSv/day, Hassler et al. 2014) → dose for this EVA vs. the NASA 600 mSv career limit. |
-| **Space weather** | NASA DONKI solar particle events, last 7 days, checked live. Offline or failed → CAUTION, never silently GO. |
+| **Space weather** | NASA DONKI solar particle events in the 7 days before the selected sol's date, fetched once for the whole sol range and cached for an hour. Changing the sol re-checks locally. Offline, failed or rate-limited → CAUTION, never silently GO. |
 | **Crew ops** | Emergency return from the selected (or farthest) stop for a solo walker, a buddy pair supporting an injured partner, or a rover pickup — time home and whether O₂ and battery cover it. |
 | **Offline** | Service worker precaches the app, terrain and imagery; orbital tiles are cached as you view them. |
 
@@ -70,7 +70,7 @@ canyon floor at the foot of the layered wall with **zero** cells over 20° and t
 - **Stop photos** are Curiosity views of the same rock units elsewhere on Mount Sharp, not the stop itself; the HiRISE image is the real ground.
 - **Data use:** all data is public NASA / USGS / university mission data, used under their media guidelines with credit
   (images: NASA/JPL-Caltech/MSSS, NASA/JPL/UArizona; weather: CAB CSIC-INTA). CTX tiles are Esri's hosted service.
-  No NASA logo is used and the app does not claim NASA endorsement. DONKI uses `DEMO_KEY`; get a free key at api.nasa.gov for heavier use.
+  No NASA logo is used and the app does not claim NASA endorsement. DONKI uses NASA's shared `DEMO_KEY` (10 requests an hour per IP); paste a free key from api.nasa.gov under Environment → Space weather. It is stored only in that browser.
 - 3D view is not built yet (`src/views/scene-3d/terrain-contract.js` is the planned contract).
 
 ---

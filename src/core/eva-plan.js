@@ -195,7 +195,7 @@ const RANK = { go: 0, caution: 1, nogo: 2 };
 export const POLL_AREAS = [
   { id: 'terrain', label: 'Terrain' },
   { id: 'consumables', label: 'Consumables' },
-  { id: 'dust', label: 'Dust' },
+  { id: 'dust', label: 'Weather' },
   { id: 'radiation', label: 'Radiation' },
   { id: 'spaceWeather', label: 'Space weather' }
 ];
@@ -207,7 +207,7 @@ export const POLL_AREAS = [
  * @param {{routing: Array<{legIdx:number, safe:boolean}>, summary: Object, plan: ReturnType<typeof planEva>,
  *          env: ReturnType<typeof environmentFor>, spaceWeather?: {status:string, text:string}}} input
  */
-export function evaluateGoNoGo({ routing, summary, plan, env, spaceWeather }) {
+export function evaluateGoNoGo({ routing, summary, plan, env, spaceWeather, sol }) {
   const reasons = [];
   const push = (area, level, text) => reasons.push({ area, level, text });
 
@@ -236,7 +236,7 @@ export function evaluateGoNoGo({ routing, summary, plan, env, spaceWeather }) {
   const clear = {
     terrain: 'Every leg on walkable ground under 20°',
     consumables: l ? `${l.label} tightest: ${l.marginPercent.toFixed(0)}% above reserve` : 'Margins healthy',
-    dust: `${env.dust.label}, τ ${env.tau.toFixed(2)}`,
+    dust: `${sol ? `Sol ${sol.sol}: ` : ''}midday ${Math.round(env.ambientC)} °C, heater ${Math.round(env.heaterW)} W · ${env.dust.label.toLowerCase()}, τ ${env.tau.toFixed(2)}`,
     radiation: plan.doseMicroSv != null ? `${Math.round(plan.doseMicroSv)} µSv this EVA, far below limits` : 'Within limits',
     spaceWeather: spaceWeather ? spaceWeather.text : 'Checking NASA DONKI…'
   };

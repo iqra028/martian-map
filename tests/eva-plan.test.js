@@ -78,4 +78,6 @@ test('space weather: recent SEP event → caution, old event → go', () => {
   assert.equal(classifySpaceWeather([{ eventTime: '2026-11-12T10:00Z' }], now).status, 'caution');
   assert.equal(classifySpaceWeather([{ eventTime: '2026-10-01T10:00Z' }], now).status, 'go');
   assert.equal(classifySpaceWeather([], now).status, 'go');
+  // a sol before the event was clear at the time
+  assert.equal(classifySpaceWeather([{ eventTime: '2026-11-12T10:00Z' }], new Date('2026-11-10T23:59:59Z')).status, 'go');
 });

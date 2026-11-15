@@ -219,6 +219,9 @@ a { color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent
 .dust-label output { color: var(--text); font-weight: 600; }
 input[type="range"] { width: 100%; accent-color: var(--accent-btn); min-height: 28px; }
 .seg + .note { margin-top: 10px; }
+.key-form { display: grid; gap: 6px; margin-top: 12px; }
+.key-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+.key-row input { min-height: 36px; padding: 0 10px; background: var(--surface); border: 0; box-shadow: inset 0 0 0 1px var(--line-strong); border-radius: var(--radius); }
 
 /* ---------- layers ---------- */
 .layer-list { display: grid; margin: 0 -6px; }
