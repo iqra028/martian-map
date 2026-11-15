@@ -11,7 +11,7 @@ import { SLOPE_CLASSES, ROUGHNESS, classifySlope, profileRoute, findSafePath } f
 import { EVA, RADIATION, environmentFor, planEva, evaluateGoNoGo, integrateWalk } from './core/eva-plan.js';
 import { MissionStore } from './core/mission-state.js';
 import { SITE, DEFAULT_ROUTE, NEW_STOP_PHOTO, BASEMAPS, SOURCES } from './config/mission.js';
-import { fetchSepEvents, classifySpaceWeather } from './data/space-weather.js';
+import { fetchSepEvents, classifySpaceWeather, NASA_API_KEY } from './data/space-weather.js';
 import { REMS_FEED, parseRems } from './data/rems.js';
 
 const $ = (id) => document.getElementById(id);
@@ -709,7 +709,7 @@ const pref = (k, v) => { try { return v === undefined ? localStorage.getItem(k) 
 async function loadSpaceWeather({ force = false } = {}) {
   sepFeed = null;
   recompute();
-  const key = pref('mm-nasa-key') || 'DEMO_KEY';
+  const key = pref('mm-nasa-key') || NASA_API_KEY;
   const dates = sols.map((s) => new Date(`${s.earthDate}T23:59:59Z`));
   const from = new Date(Math.min(Date.now(), ...dates)), to = new Date();
   let cached = null;

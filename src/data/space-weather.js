@@ -7,6 +7,8 @@
  */
 
 const DONKI_SEP = 'https://api.nasa.gov/DONKI/SEP';
+// shortcut: the project's free api.nasa.gov key is public in the repo; rotate it if its hourly quota gets abused
+export const NASA_API_KEY = 'Lz9ptk8RLK6gwJTdGGtH78nLRqWqFLRfgDmWGmFW';
 export const LOOKBACK_DAYS = 7;
 const day = (d) => d.toISOString().slice(0, 10);
 
@@ -33,7 +35,7 @@ export function classifySpaceWeather(events, asOf = new Date()) {
  * Fetches every SEP event between two dates in one request, so any sol in that span can be
  * classified locally. Resolves to {events} or {error} with a reason a person can act on.
  */
-export async function fetchSepEvents(from, to, apiKey = 'DEMO_KEY') {
+export async function fetchSepEvents(from, to, apiKey = NASA_API_KEY) {
   const events = [];
   try {
     // DONKI refuses ranges over 60 days, so walk the span in 60-day windows
@@ -42,8 +44,8 @@ export async function fetchSepEvents(from, to, apiKey = 'DEMO_KEY') {
       const url = `${DONKI_SEP}?startDate=${day(new Date(s))}&endDate=${day(e)}&api_key=${encodeURIComponent(apiKey)}`;
       const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
       if (resp.status === 429) {
-        return { error: apiKey === 'DEMO_KEY'
-          ? 'NASA’s shared demo key is used up (10 checks an hour). Add your own free key below.'
+        return { error: apiKey === NASA_API_KEY
+          ? 'The app’s shared NASA key is over its hourly limit. Add your own free key below.'
           : 'Your NASA API key is over its hourly limit. Try again later.' };
       }
       if (resp.status === 403) return { error: 'NASA rejected the API key. Check it below.' };

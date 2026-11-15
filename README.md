@@ -70,7 +70,7 @@ canyon floor at the foot of the layered wall with **zero** cells over 20° and t
 - **Stop photos** are Curiosity views of the same rock units elsewhere on Mount Sharp, not the stop itself; the HiRISE image is the real ground.
 - **Data use:** all data is public NASA / USGS / university mission data, used under their media guidelines with credit
   (images: NASA/JPL-Caltech/MSSS, NASA/JPL/UArizona; weather: CAB CSIC-INTA). CTX tiles are Esri's hosted service.
-  No NASA logo is used and the app does not claim NASA endorsement. DONKI uses NASA's shared `DEMO_KEY` (10 requests an hour per IP); paste a free key from api.nasa.gov under Environment → Space weather. It is stored only in that browser.
+  No NASA logo is used and the app does not claim NASA endorsement. DONKI uses the project's free api.nasa.gov key, which is public in `src/data/space-weather.js`. Anyone can paste their own key under Environment → Space weather; it is stored only in that browser.
 - 3D view is not built yet (`src/views/scene-3d/terrain-contract.js` is the planned contract).
 
 ---
