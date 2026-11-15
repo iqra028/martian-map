@@ -17,10 +17,11 @@ const RAD2DEG = 180 / Math.PI;
  * (10/15/20°); 20° is treated as the unassisted suited-walking limit.
  */
 export const SLOPE_CLASSES = [
-  { id: 'nominal', label: 'Nominal', maxDeg: 10, color: '#4ade80' },
-  { id: 'moderate', label: 'Moderate', maxDeg: 15, color: '#facc15' },
-  { id: 'steep', label: 'Steep', maxDeg: 20, color: '#fb923c' },
-  { id: 'impassable', label: 'No-go', maxDeg: Infinity, color: '#f87171' }
+  // Safe ground stays neutral so only hazards carry colour (amber caution, red warning)
+  { id: 'nominal', label: 'Nominal', maxDeg: 10, color: '#eef1f4' },
+  { id: 'moderate', label: 'Moderate', maxDeg: 15, color: '#e8cf8a' },
+  { id: 'steep', label: 'Steep', maxDeg: 20, color: '#e3a33b' },
+  { id: 'impassable', label: 'No-go', maxDeg: Infinity, color: '#e5534b' }
 ];
 
 export function classifySlope(deg) {

@@ -2,7 +2,7 @@
  * Offline support: the app shell and site data are precached; same-origin requests are
  * network-first (fresh when online, cached when not); orbital map tiles are cache-first.
  */
-const APP = 'mm-app-v1';
+const APP = 'mm-app-v2';
 const TILES = 'mm-tiles-v1';
 const MAX_TILES = 1500; // shortcut: FIFO cap (~30 MB), switch to LRU if users pan widely offline
 

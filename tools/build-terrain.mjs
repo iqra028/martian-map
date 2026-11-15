@@ -142,7 +142,7 @@ const slopeImg = Buffer.alloc(outW * outH * 4);
 // Sun from the north-west, 45° up: light vector in (east, north, up)
 const az = (315 * Math.PI) / 180, alt = (45 * Math.PI) / 180;
 const light = [Math.sin(az) * Math.cos(alt), Math.cos(az) * Math.cos(alt), Math.sin(alt)];
-const hazardColors = { steep: [249, 115, 22, 150], impassable: [220, 38, 38, 190] };
+const hazardColors = { steep: [227, 163, 59, 90], impassable: [229, 83, 75, 130] };
 
 for (let y = 0; y < outH; y++) {
   for (let x = 0; x < outW; x++) {

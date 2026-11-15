@@ -29,6 +29,11 @@ function fmtH(h) {
   const m = Math.round(h * 60);
   return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} m`;
 }
+// Mission elapsed time since egress, e.g. T+1:43
+function met(h) {
+  const m = Math.round(h * 60);
+  return `T+${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+}
 
 const store = new MissionStore({ siteName: SITE.name, center: SITE.center, waypoints: clone(DEFAULT_ROUTE) });
 const ui = { tab: 'plan', activeStop: 0, tau: 0.6, solIdx: 0, crew: 'solo', abort: false, adding: false, playTimer: null };
@@ -79,16 +84,17 @@ function loadGeology() {
 const routeLayer = L.layerGroup().addTo(map);
 const markerLayer = L.layerGroup().addTo(map);
 const abortLayer = L.layerGroup().addTo(map);
-const scrubMarker = L.circleMarker([0, 0], { radius: 8, color: '#111', weight: 3, fillColor: '#f3f4f6', fillOpacity: 1 });
+const scrubMarker = L.circleMarker([0, 0], { radius: 7, color: '#11161b', weight: 2.5, fillColor: '#5fb7d4', fillOpacity: 1 });
 
 let overlays = [];
 function buildOverlays() {
   const nw = raster.pixelToGeographic(-0.5, -0.5);
   const se = raster.pixelToGeographic(raster.metadata.lines - 0.5, raster.metadata.samples - 0.5);
   const dtmBounds = [[se.lat, nw.lon], [nw.lat, se.lon]];
+  const ortho = L.imageOverlay(SITE.ortho.url, SITE.ortho.bounds, { opacity: 1 });
+  transparentPadding(SITE.ortho.url).then((url) => ortho.setUrl(url)).catch(() => {});
   overlays = [
-    { id: 'ortho', name: 'HiRISE image', detail: '5 m/px · ' + SITE.ortho.productId, on: true, opacity: 1,
-      layer: L.imageOverlay(SITE.ortho.url, SITE.ortho.bounds, { opacity: 1 }) },
+    { id: 'ortho', name: 'HiRISE image', detail: '5 m/px · ' + SITE.ortho.productId, on: true, opacity: 1, layer: ortho },
     { id: 'shade', name: 'Hillshade', detail: 'From the 10 m HiRISE terrain model', on: false, opacity: 0.6,
       layer: L.imageOverlay('./data/terrain/hillshade.png', dtmBounds, { opacity: 0.6 }) },
     { id: 'slope', name: 'Steep ground', detail: 'Orange 15–20°, red over 20° (no-go)', on: true, opacity: 0.7,
@@ -100,6 +106,24 @@ function buildOverlays() {
   ];
   overlays.forEach((o) => o.on && o.layer.addTo(map));
   routeLayer.bringToFront?.();
+}
+
+// HiRISE browse images pad the map-projected strip with black; clear it so orbital context shows around the strip
+async function transparentPadding(url) {
+  const img = new Image();
+  img.src = url;
+  await img.decode();
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const g = c.getContext('2d');
+  g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height);
+  for (let i = 0; i < d.data.length; i += 4) {
+    if (d.data[i] + d.data[i + 1] + d.data[i + 2] < 24) d.data[i + 3] = 0; // < 24 absorbs JPEG noise at the edge
+  }
+  g.putImageData(d, 0, 0);
+  return URL.createObjectURL(await new Promise((r) => c.toBlob(r)));
 }
 
 /* ---------------- planning ---------------- */
@@ -151,8 +175,8 @@ function renderRoute() {
   let run = null;
   const flush = () => {
     if (run && run.pts.length > 1) {
-      L.polyline(run.pts, { color: '#111', weight: 9, opacity: 0.9, interactive: false }).addTo(routeLayer);
-      L.polyline(run.pts, { color: SLOPE_COLOR[run.cls], weight: 5, interactive: false }).addTo(routeLayer);
+      L.polyline(run.pts, { color: '#11161b', weight: 7, opacity: 0.85, interactive: false }).addTo(routeLayer);
+      L.polyline(run.pts, { color: SLOPE_COLOR[run.cls], weight: 3.5, interactive: false }).addTo(routeLayer);
     }
   };
   for (const s of samples) {
@@ -165,7 +189,7 @@ function renderRoute() {
   }
   flush();
   result.legs.forEach((l) => {
-    if (!l.safe) L.polyline(l.path, { color: '#f87171', weight: 4, dashArray: '2 10', interactive: false }).addTo(routeLayer);
+    if (!l.safe) L.polyline(l.path, { color: '#e5534b', weight: 4, dashArray: '2 10', interactive: false }).addTo(routeLayer);
   });
 }
 
@@ -197,10 +221,11 @@ function renderStatus() {
   const { level, reasons } = result.verdict;
   const pill = $('status-pill');
   pill.dataset.level = level;
-  $('status-pill-text').textContent = reasons.length ? `${LEVEL_TEXT[level]} · ${reasons.length} issue${reasons.length > 1 ? 's' : ''}` : LEVEL_TEXT[level];
+  $('status-pill-text').textContent = LEVEL_TEXT[level];
+  $('status-pill-sub').textContent = reasons.length ? `${reasons.length} issue${reasons.length > 1 ? 's' : ''}` : 'All nominal';
   const card = $('status-card');
   card.dataset.level = level;
-  $('status-title').textContent = level === 'go' ? 'GO for EVA' : LEVEL_TEXT[level];
+  $('status-title').textContent = LEVEL_TEXT[level];
   $('status-reasons').innerHTML = reasons.length
     ? reasons.map((r) => `<li data-level="${r.level}">${esc(r.text)}</li>`).join('')
     : '<li>All checks nominal</li>';
@@ -217,31 +242,29 @@ function renderPlan() {
 
   $('consumables').innerHTML = Object.entries(plan.consumables).map(([id, c]) => {
     const worst = plan.stops.reduce((w, st) => (!w || st.pnr[id].marginPercent < w.pnr[id].marginPercent ? st : w), null);
+    // Colour the bar by the tightest point-of-no-return margin for this resource, so it agrees with the status
     const lvl = worst ? PNR_LEVEL[worst.pnr[id].status] : 'go';
-    const sub = worst
-      ? `Return margin at stop ${worst.idx}: ${Number.isFinite(worst.pnr[id].marginPercent) ? worst.pnr[id].marginPercent.toFixed(0) + '% above reserve' : 'no safe return path'}`
-      : '';
     const digits = c.unit === 'kg' ? 1 : 0;
     return `<div class="gauge">
-      <div class="gauge-head"><span>${esc(c.label)}</span><strong>${Math.round(c.pct)}%</strong></div>
+      <div class="gauge-head"><span>${esc(c.label)}</span><span><small>${c.remaining.toFixed(digits)} / ${c.cap} ${c.unit}</small><strong>${Math.round(c.pct)}%</strong></span></div>
       <div class="gauge-bar" role="meter" aria-label="${esc(c.label)} remaining" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(c.pct)}">
         <div class="gauge-fill" data-level="${lvl}" style="width:${Math.max(0, Math.min(100, c.pct))}%"></div>
       </div>
-      <p class="gauge-sub">${c.remaining.toFixed(digits)} of ${c.cap} ${c.unit} left${sub ? ' · ' + esc(sub) : ''}</p>
     </div>`;
   }).join('');
 
   const w = plan.worstStop;
-  $('pnr-line').textContent = w
-    ? `Point of no return is tightest at stop ${w.idx}: ${w.limiting.label.toLowerCase()} ${Number.isFinite(w.limiting.marginPercent) ? w.limiting.marginPercent.toFixed(0) + '% of capacity spare after the walk home plus a 25% reserve' : 'cannot get home safely'}.`
+  $('pnr-line').innerHTML = w
+    ? `<strong>Point of no return</strong> is tightest at stop ${w.idx}: ${esc(w.limiting.label.toLowerCase())} ${Number.isFinite(w.limiting.marginPercent) ? `has ${w.limiting.marginPercent.toFixed(0)}% spare after the walk home and a 25% reserve` : 'cannot get home safely'}.`
     : '';
+  $('pnr-line').hidden = !w;
 
   const wps = store.getState().waypoints;
   $('stops').innerHTML = wps.map((wp, i) => {
     const st = plan.stops.find((x) => x.idx === i);
     const meta = i === 0
-      ? `Start and finish · back after ${fmtH(plan.hours)}`
-      : `Arrive ${fmtH(st.arriveH)} · ${st.returnKm != null ? st.returnKm.toFixed(1) + ' km' : '—'} from base`;
+      ? `Egress T+0:00 · return ${met(plan.hours)}`
+      : `Arrive ${met(st.arriveH)} · ${st.returnKm != null ? st.returnKm.toFixed(1) + ' km' : '—'} from base`;
     const chip = st && st.limiting.status !== 'NOMINAL'
       ? `<span class="chip chip-${PNR_LEVEL[st.limiting.status]}">${st.limiting.status === 'CAUTION' ? 'Low margin' : 'Past PNR'}</span>` : '';
     const removable = i > 0 && wps.length > 2;
@@ -277,7 +300,7 @@ function renderStop() {
     ['Ground slope', Number.isFinite(slopeDeg) ? `${slopeDeg.toFixed(1)}° · ${classifySlope(slopeDeg).label}` : '—']
   ];
   if (st) {
-    facts.push(['Arrive', `${fmtH(st.arriveH)} into EVA`]);
+    facts.push(['Arrive', met(st.arriveH)]);
     facts.push(['Walk back to base', st.returnH != null ? `${st.returnKm.toFixed(1)} km · ${fmtH(st.returnH)}` : 'No safe path']);
     facts.push(['Tightest margin', `${st.limiting.label} ${Number.isFinite(st.limiting.marginPercent) ? st.limiting.marginPercent.toFixed(0) + '%' : '—'}`]);
   } else {
@@ -344,8 +367,8 @@ function renderAbort() {
     info.innerHTML = `<p class="big">No safe path home</p><p>From stop ${i} every route crosses ground over 20°.</p>`;
     return;
   }
-  L.polyline(ret.path, { color: '#111', weight: 9, interactive: false }).addTo(abortLayer);
-  L.polyline(ret.path, { color: '#f87171', weight: 5, dashArray: '10 8', interactive: false }).addTo(abortLayer);
+  L.polyline(ret.path, { color: '#11161b', weight: 7, interactive: false }).addTo(abortLayer);
+  L.polyline(ret.path, { color: '#e5534b', weight: 3.5, dashArray: '8 6', interactive: false }).addTo(abortLayer);
   const km = samples[samples.length - 1].distKm;
   const left = result.plan.stops.find((s) => s.idx === i).remaining;
   let supply = 'Walking back stays the fallback if the rover fails.';
@@ -393,9 +416,9 @@ function drawProfile() {
   const y = (m) => pad.t + (1 - (m - lo) / (hi - lo)) * (H - pad.t - pad.b);
   chart = { samples, x, pad, W, total };
 
-  ctx.font = '12px system-ui, sans-serif';
-  ctx.fillStyle = '#8f99a8';
-  ctx.strokeStyle = '#2b313b';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillStyle = '#737d8a';
+  ctx.strokeStyle = '#262c34';
   ctx.lineWidth = 1;
   for (let k = 0; k <= 2; k++) {
     const m = lo + ((hi - lo) * k) / 2;
@@ -411,10 +434,10 @@ function drawProfile() {
   ctx.moveTo(x(samples[0].distKm), y(lo));
   samples.forEach((s) => ctx.lineTo(x(s.distKm), y(s.elevM)));
   ctx.lineTo(x(samples[samples.length - 1].distKm), y(lo));
-  ctx.fillStyle = 'rgba(245, 158, 91, 0.10)';
+  ctx.fillStyle = 'rgba(238, 241, 244, 0.05)';
   ctx.fill();
 
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2;
   for (let k = 1; k < samples.length; k++) {
     const a = samples[k - 1], b = samples[k];
     if (a.legIdx !== b.legIdx && b.distKm - a.distKm > 0.05) continue;
@@ -423,8 +446,8 @@ function drawProfile() {
   }
 
   // stop ticks
-  ctx.fillStyle = '#f3f4f6';
-  ctx.strokeStyle = 'rgba(243, 244, 246, .35)';
+  ctx.fillStyle = '#a7afba';
+  ctx.strokeStyle = '#353d48';
   ctx.lineWidth = 1;
   ctx.textAlign = 'center';
   result.profile.legs.forEach((leg, i) => {
@@ -687,7 +710,12 @@ async function boot() {
   recompute();
   fitRoute();
 
-  fetchSpaceWeather().then((sw) => {
+  // DEMO_KEY allows ~30 calls/hour, so reuse a successful check for an hour
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem('mm-sw')); } catch { /* storage blocked */ }
+  const fresh = cached && Date.now() - Date.parse(cached.checkedAt) < 36e5;
+  (fresh ? Promise.resolve(cached) : fetchSpaceWeather()).then((sw) => {
+    if (!sw.error) try { localStorage.setItem('mm-sw', JSON.stringify(sw)); } catch { /* storage blocked */ }
     spaceWeather = sw;
     $('sw-text').textContent = sw.text;
     recompute();
